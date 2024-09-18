@@ -1,0 +1,31 @@
+{
+    "type": "request",
+    "process_idx": 1,
+    "script": "execute_start_app",
+    "filename": "C:/Users/123/Desktop/python/python_node_test/start_app.py",
+    "timestamp": "2024-08-20 14:51:08",
+    "next": "execute_delivery_reservation",
+    "contexts": {
+        "step_1": {
+            "task": "start_application",
+            "app_path": "C:/Program Files (x86)/TOBESOFT/XPLATFORM/9.2/XPlatform.exe -K SGIPS_PROD -X https://www.s-gips.co.kr/ep/ui/SHI_SGIPS_ITR.xadl"
+        },
+        "step_2": {
+            "task": "login",
+            "username_key": "A0003139A",
+            "auth_token": "c7715cat@@@",
+            "pos_user": [1177, 48],
+            "pos_token": [1285, 48],
+            "pos_login_btn": [1360, 50],
+            "region_popup": [758, 518, 403, 142],
+            "region_confirm_btn": [938, 631, 43, 14]
+        },
+        "step_3": {
+            "task": "access_work_system",
+            "pos_work_btn": [1415, 47],
+            "pos_menu_tab": [75, 343],
+            "region_popup": [4, 6, 675, 787],
+            "region_confirm_btn": [624, 769, 34, 11]
+        }
+    }
+}

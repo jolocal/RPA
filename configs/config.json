@@ -1,0 +1,14 @@
+{
+    "root_dir": "C:/work/RPA_python3.7_20240824",
+    "image_paths": {
+        "empty_table_image": "C:/work/RPA_python3.7_20240824/src/templates/loading/empty_table.png",
+        "loading_icon_image":[
+            "C:/work/RPA_python3.7_20240824/src/templates/loading/loading_icon_1.png",
+            "C:/work/RPA_python3.7_20240824/src/templates/loading/loading_icon_2.png",
+            "C:/work/RPA_python3.7_20240824/src/templates/loading/loading_icon_3.png",
+            "C:/work/RPA_python3.7_20240824/src/templates/loading/loading_icon_4.png"
+        ],
+        "popup_close_btn_image": "C:/work/RPA_python3.7_20240824/src/templates/btn/close_btn.png"
+    },
+    "master_mode": true
+}

@@ -1,0 +1,100 @@
+{
+    "type": "request",
+    "process_idx": 2,
+    "script": "execute_delivery_reservation",
+    "filename": "C:/Users/123/Desktop/python/python_node_test/delivery_reservation.py",
+    "contexts": {
+        "step_1": {
+            "task": "move_to_menu",
+            "pos_material_tab":[75, 343],
+            "pos_pallet_tab": [110, 680],
+            "pos_vali": [480, 231]
+        },
+        "step_2": {
+            "task": "search_po_num",
+            "po_no": "P12XA03902",
+            "pos_po": [443, 183],
+            "pos_status": [1149, 182],
+            "status_options": [
+            [962, 228],
+            [962, 250],
+            [962, 273],
+            [962, 295]
+            ],
+            "pos_search_btn": [1161, 313]
+        },
+        "step_3": {
+            "task": "find_and_input_inbound_date",
+            "pos_excel": [1175, 440],
+            "pos_save_btn": [921, 640],
+            "read_column": 4,
+            "pos_start": [724, 502],
+            "target_codes": [
+            "Q2469CT037L00001",
+            "Q2469CT036L00001"
+            ],
+            "inbound_date": "20240823"
+        },
+        "step_4": {
+            "task": "generate_pallet",
+            "pos_pallet_btn": [516, 410],
+            "region_popup": [950, 539, 248, 144],
+            "region_popup_btn": [1026, 653, 42, 14],
+            "pos_btn_1": [1260, 844],
+            "pos_btn_2": [1045, 666],
+            "pos_btn_3": [1073, 660],
+            "all_checkbox": [266, 475],
+            "deli_reserv_btn": [676, 413],
+            "pos_vali": [484, 197]
+        },
+        "step_5": {
+            "task": "input_vehicle_information",
+            "pos_direct_deli": [563, 302],
+            "pos_vehicle_info": [346, 719],
+            "pos_deli_Type": [724, 490],
+            "pos_reg_vehicle_Manag": [715, 691],
+            "pos_checkbox": [708, 525],
+            "pos_confirm_btn_1": [1179, 779],
+            "pos_confirm_btn_2": [1272, 852]
+        },
+        "step_6": {
+            "task": "reserve_delivery",
+            "pos_start": [320, 522],
+            "pos_deli_reserv_btn": [436, 458],
+            "pos_popup_close_btn": [1116, 693],
+            "pos_popup_no_btn": [1105, 661]
+        },
+        "step_7": {
+            "task": "print_invoice_and_details",
+            "pos_start": [328, 522],
+            "pos_trns_btn":[507,458],
+            "pos_all_checkbox":[696,470],
+            "pos_tag_btn":[1039,375],
+            "pos_tag_close_btn":[1422,909],
+            "pos_trns_print_btn":[737,373],
+            "pos_ok_btn":[1003,569],
+            "pos_trns_print_icon":[520,169],
+            "pos_trns_confirm_btn_1":[1080,633],
+            "pos_trns_close_btn":[1422,909],
+            "pos_trns_confirm_btn_2":[1311,718],
+            "pos_ddl_print_btn":[596,457],
+            "pos_ddl_confirm_btn":[1054,601],
+            "pos_ddl_print_icon_1":[520,169],
+            "pos_ddl_confirm_btn_1":[1080,633],
+            "pos_ddl_print_icon_2":[520,169],
+            "pos_ddl_page_options_2":[1177,505],
+            "pos_ddl_confirm_btn_2":[1080,633],
+            "pos_ddl_print_icon_3":[520,169],
+            "pos_ddl_page_options_3":[1177,505],
+            "pos_ddl_confirm_btn_3":[1080,633],
+            "pos_ddl_close_btn":[1422,909]
+        },
+        "step_8": {
+            "task": "reset_for_po_number_search",
+            "pos_pallet_tab": [375, 65],
+            "pos_menu_tab":[214,95]
+        }
+    },
+    "timestamp": "%Y-%m-%d%H:%M:%S",
+    "next": ""
+}

@@ -1,0 +1,63 @@
+{
+    "type": "request",
+    "process_idx": 2,
+    "script": "execute_cw_req_due",
+    "filename": "C:/work/RPA_python3.7_20240824/src/workflows/cw_delv_proc/cw_req_due.py",
+    "timestamp": "%Y-%m-%d %H:%M:%S",
+    "contexts": {
+        "step_1": {
+            "task": "navigate_to_deliv_mng",
+            "pos_global_search_input": [71, 93],
+            "pos_deliv_res": [902, 479],
+            "pos_vali_1": [485, 198],
+            "pos_po_no": [684, 198],
+            "po_no": "P137A01861",
+            "pos_search_btn_1": [1083, 255],
+            "pos_change_due_date_mng": [1833, 146],
+            "pos_popup_confirm_btn_1": [1046, 600]
+        },
+        "step_2": {
+            "task": "load_data_table",
+            "pos_vali_2": [1284, 158],
+            "pos_search_btn_2": [1083, 255],
+            "pos_vali_3": [751, 439]
+        },
+        "step_3": {
+            "task": "save_and_read_excel_data",
+            "pos_excel_icon": [1792, 374],
+            "pos_excel_save": [915, 578]
+        },
+        "step_4": {
+            "task": "find_matching_rows",
+            "target_codes": [
+                {"SN2630BC210100004": "10"},
+                {"SN2630BC210100019": "160"},
+                {"SN2630BC210100029": "260"}
+            ],
+            "read_columns": [6, 8]
+        },
+        "step_5": {
+            "task": "navigate_to_matching_rows",
+            "pos_start": [645, 440]
+        },
+        "step_6": {
+            "task": "input_negotiation_date",
+            "pos_nego_due": [384, 343],
+            "nego_due": ""
+        },
+        "step_7": {
+            "task": "input_incoming_goods_info",
+            "pos_comment": [630, 343],
+            "pos_copy_select_btn": [836, 342]
+        },
+        "step_8": {
+            "task": "approve_changes",
+            "pos_approve_btn": [1840, 108]
+        },
+        "step_9": {
+            "task": "reset_for_po_number_search"
+        }
+    },
+    "next": ""
+}
+
