@@ -24,7 +24,7 @@ from common.logger_manager import LoggerManager
 from common.response_manager import ResponseManager
 from common.utils.helper import PyAutoGuiHelper
 from common.utils.path_utils import PathHelper
-from common.popup_handling_manager import PopupManager
+from common.ocr_popup_manager import PopupManager
 
 @dataclass
 class Step:
@@ -630,8 +630,32 @@ class CW_ReqDueManager:
             pyautogui.press('enter')
             time.sleep(1)
             
-            PyAutoGuiHelper.perform_click(step.pos_confirm_btn)
-            self.logger.info(f"Step {step_num}: Clicking '일괄입력 반영 되었습니다.' button at position {step.pos_confirm_btn}. / pos_confirm_btn: {step.pos_confirm_btn}")
+            
+            success_texts = ["일괄입력","반영","되었습니다."]
+            
+            success, detected_text = PopupManager.process_popup(
+                success_texts,
+                'batch_input', # popup_type
+            )
+            
+            time.sleep(1)
+            
+            if success:
+                self.logger.debug(f"Step {step_num}: process '일괄반영' popup result - success: {success}, detected_text: {detected_text}")   
+                PyAutoGuiHelper.perform_click(step.pos_confirm_btn)
+                self.logger.info(f"Step {step_num}: Clicking '일괄입력 반영 되었습니다.' button at position {step.pos_confirm_btn}. / pos_confirm_btn: {step.pos_confirm_btn}")
+            else:
+                self.logger.debug(f"Step {step_num}: Failed to process popup. Last detected text: '{detected_text.strip()}'.")
+                return False, f"Failed to process '일괄반영'popup. Last detected text: '{detected_text.strip()}'."
+                        
+            # if not success:
+            #     self.logger.debug(f"Step {step_num}: Failed to process popup. Last detected text: '{detected_text.strip()}'.")
+            #     return False, f"Failed to process '일괄반영'popup. Last detected text: '{detected_text.strip()}'."
+            
+            # self.logger.debug(f"Step {step_num}: process '일괄반영' popup result - success: {success}, detected_text: {detected_text}")   
+            
+            # PyAutoGuiHelper.perform_click(step.pos_confirm_btn)
+            # self.logger.info(f"Step {step_num}: Clicking '일괄입력 반영 되었습니다.' button at position {step.pos_confirm_btn}. / pos_confirm_btn: {step.pos_confirm_btn}")
             
             time.sleep(3)
             success, message = self.detect_loading(step_num, step)
@@ -648,7 +672,7 @@ class CW_ReqDueManager:
             return True, "Negotiation date input and bulk input click completed successfully."
             
         except Exception as e:
-            error_message = f"Step {step_num}: navigate_to_matching_rows failed: {str(e)}"
+            error_message = f"Step {step_num}: input_negotiation_date failed: {str(e)}"
             self.logger.error(error_message)
             return False, error_message  # 작업이 실패한 경우 False와 오류 메시지 반환
 

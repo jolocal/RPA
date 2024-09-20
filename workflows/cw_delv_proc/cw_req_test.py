@@ -11,11 +11,10 @@ sys.path.append(root_dir)
 # 절대 경로를 사용하여 모듈을 불러옴
 from common.logger_manager import LoggerManager
 from common.response_manager import ResponseManager
-from common.popup_manager import PopupManager
 from common.loading_manager import LoadingIconManager
-from common.utils.helper import PyAutoGuiHelper
-from common.utils.keyboard_utils import CapslockHelper
 from common.utils.path_utils import PathHelper
+from common.ocr_popup_manager import PopupManager
+
 
 from cw_req_due import CW_ReqDueManager
 
@@ -101,34 +100,34 @@ step = manager.contexts.step_2  # 원하는 스텝에 맞게 변경하세요.
 
 # 개별 메서드를 호출하여 테스트합니다.
 
-time.sleep(3)
-print("1- start")
-manager.navigate_to_deliv_reserv_improv(1, manager.contexts.step_1)
-print("1- end")
-print("2- start")
-manager.navigate_to_deliv_mng(2, manager.contexts.step_2)
-print("2- end")
-print("3- start")
-manager.load_data_table(3, manager.contexts.step_3)
-print("3- end")
-print("4- start")
-manager.save_and_read_excel_data(4, manager.contexts.step_4)
-print("4- end")
-print("5- start")
-manager.find_matching_rows(5, manager.contexts.step_5)
-print("5- end")
-print("6- start")
-manager.navigate_to_matching_rows(6, manager.contexts.step_6)
-print("6- end")
+# time.sleep(3)
+# print("1- start")
+# manager.navigate_to_deliv_reserv_improv(1, manager.contexts.step_1)
+# print("1- end")
+# print("2- start")
+# manager.navigate_to_deliv_mng(2, manager.contexts.step_2)
+# print("2- end")
+# print("3- start")
+# manager.load_data_table(3, manager.contexts.step_3)
+# print("3- end")
+# print("4- start")
+# manager.save_and_read_excel_data(4, manager.contexts.step_4)
+# print("4- end")
+# print("5- start")
+# manager.find_matching_rows(5, manager.contexts.step_5)
+# print("5- end")
+# print("6- start")
+# manager.navigate_to_matching_rows(6, manager.contexts.step_6)
+# print("6- end")
 print("7- start")
 manager.input_negotiation_date(7, manager.contexts.step_7)
 print("7- end")
-print("8- start")
-manager.input_incoming_goods_info(8, manager.contexts.step_8)
-print("8- end")
-print("9- start")
-manager.approve_changes(9, manager.contexts.step_9)
-print("9- end")
-print("10- start")
-manager.reset_for_po_number_search(10, manager.contexts.step_10)
-print("10- end")
+# print("8- start")
+# manager.input_incoming_goods_info(8, manager.contexts.step_8)
+# print("8- end")
+# print("9- start")
+# manager.approve_changes(9, manager.contexts.step_9)
+# print("9- end")
+# print("10- start")
+# manager.reset_for_po_number_search(10, manager.contexts.step_10)
+# print("10- end")
