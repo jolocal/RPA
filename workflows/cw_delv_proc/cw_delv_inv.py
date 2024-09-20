@@ -522,13 +522,18 @@ class CW_ReservationManager:
                     json_bom_quantity = json_data[2]
                     if value == json_part_po:
                         self.results.append((index, value, json_bom_quantity))
+                        
+            self.logger.debug(f"Step {step_num}:  filtered_data와 Json_data 비교: \n {self.results}")
+            
+            #? 중복된 결과 제거 (순서유지)
+            self.results = list(dict.fromkeys(self.results))
+            self.logger.debug(f"Step {step_num}: matching results (중복제거) : \n {self.results}")
             
             # 매칭되는 데이터가 없는 경우 
             if not self.results:
                 self.logger.info(f"Step {step_num}: No matching results found")
                 return False, f"Step {step_num}: No matching results found."
-            
-            self.logger.debug(f"Step {step_num}: matching results: {self.results}")
+
             # 리스트 형태의 튜플 반환 [ (인덱스,'P/O품번',BOM수량),(인덱스,'P/O품번',BOM수량),...]
             return True, f"Step {step_num}: matching results: {self.results}"
 
