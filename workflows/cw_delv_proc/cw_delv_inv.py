@@ -109,9 +109,7 @@ class CW_ReservationManager:
         
         self.po_no = ""
         self.filepath = ""
-        self.matching_indices = []
-        self.initial_quantity = 0
-        self.total_quantity = 0
+        self.results = []
         
         self.master_mode = master_mode
         print(f"master_mode in StartApp: {self.master_mode}")
@@ -466,20 +464,16 @@ class CW_ReservationManager:
         try:
             time.sleep(3)
             self.logger.info(f"Step {step_num}: Starting 'find_matching_rows'.")
-
-            # JSON 데이터로부터 열 인덱스와 po_data_list를 받음
-            read_columns = step.read_columns  # [0, 3, 12] 
-            po_data_list = step.po_data_list
-
-            time.sleep(1)
             
-            # 엑셀 파일에서 지정된 열 읽어오기
-            print(f"Step {step_num}: Reading specified columns {read_columns} from Excel file at {self.filepath}")
-            
-            df = pd.read_excel(self.filepath, usecols=read_columns, header=None, engine='openpyxl')
+            df = pd.read_excel(self.filepath, engine='openpyxl', sheet_name=0, header=0)
             self.logger.debug(f"Step {step_num}: Excel file loaded into DataFrame.")
             
             time.sleep(3)
+            
+            # JSON 데이터로부터 열 인덱스와 po_data_list를 받음
+            read_columns = step.read_columns  # [0, 3, 12] 
+            # 엑셀 파일에서 지정된 열 읽어오기
+            print(f"Step {step_num}: Reading specified columns {read_columns} from Excel file at {self.filepath}")
             
             #? read_column 타입 확인하기
             self.logger.debug(f"Step {step_num}: Type of read_columns: {type(read_columns)}")
@@ -492,97 +486,51 @@ class CW_ReservationManager:
             
             self.logger.info(f"Step {step_num}: All columns are within valid range.")
             
-            #? 열 데이터 추출 후 문자열로 변환
+            #? 열 데이터 추출후 납품예약불가사유가 없는 데이터 필터링
             part_po_idx = read_columns[0]
             cause_idx = read_columns[1]
             material_code_idx = read_columns[2]
             
-            part_po_list = df.iloc[:, part_po_idx].astype(str).tolist()
-            cause_list = df.iloc[:, cause_idx].astype(str).tolist()            
+            # P/O품번, 납품예약불가사유 열 데이터 선택
+            part_po_row = df.iloc[:, part_po_idx]
+            cause_row = df.iloc[:, cause_idx]
             
-            #? 데이터 정규화 및 검증
+            # NaN, 빈 문자열, 공백 문자열, None 조건을 만족하는지 확인
+            condition = (
+                (cause_row.isnull()) | # NaN 이나 None 값 확인
+                (cause_row == '') | # 빈문자열 확인
+                (cause_row.str.isspace()) # 공백 문자열 확인
+            )
             
+            # condition을 충족하는 품번 데이터 추출
+            excel_data = part_po_row[condition]
             
-
-            self.logger.debug(f"Step {step_num}: excel 'P/O품번' index {part_po_idx} list : {part_po_list}")
-            self.logger.debug(f"Step {step_num}: excel 'P/O품번' index {cause_idx} list : {cause_list}")
+            # 추출한 데이터 문자열 변환후 공백 제거
+            filtered_data = excel_data.astype(str).str.strip()
+            self.logger.debug(f"Step {step_num}: Extracted data: \n{filtered_data}")
             
-            # df 전체 내용을 출력
-            print("Full DataFrame:")
-            print(df)
-
-            # 인덱스를 통해 컬럼 접근
-            df['인덱스'] = df.index  # 각 행에 인덱스를 추가
-            print(f"Extracted data:\n{df.head()}")
-
-            time.sleep(3)
+            #? JSON 데이터 (P/O품번, 자재번호, BOM수량)
+            po_data_list =  step.po_data_list
+            self.logger.debug(f"Step {step_num}: po_data_list (type{type(po_data_list)}): \n {po_data_list}")
             
-            # 일치하는 행을 저장할 리스트
-            self.matching_indices = []
-
-            # JSON 리스트에서 품번과 자재번호가 일치하는 데이터 찾기
-            for data in po_data_list:
-                part_po = data[0]
-                material_code = data[1]
-                initial_quantity = data[2]  # 이 수량을 추후 합산할 예정
-
-                print(f"Step {step_num}: Searching for 품번: {part_po}, 자재번호: {material_code}")
-                time.sleep(1)
-                
-                # 품번과 자재번호가 일치하는 행 찾기 (수량은 무시)
-                matched_rows = df[
-                    (df[0] == part_po) &
-                    (df[12] == material_code)
-                ]
-
-                if matched_rows.empty:
-                    print(f"Step {step_num}: No matching data found for 품번: {part_po}, 자재번호: {material_code}")
-                    continue
-
-                print("Matched Rows:")
-                print(matched_rows)
-
-                time.sleep(1)
-                # 2차 검증: '엑셀 3번 열'에서 NaN 또는 빈 문자열인 데이터만 추출
-                filtered_rows = matched_rows[
-                    (matched_rows[3].isna()) | (matched_rows[3].str.strip() == '')
-                ]
-
-                print("Filtered Rows (NaN or empty in 3rd column):")
-                print(filtered_rows)
-                
-                time.sleep(1)
-                
-                # 초기 수량 합산
-                try:
-                    total_quantity = initial_quantity + filtered_rows.shape[0] - 1  # initial_quantity 값 포함한 합산
-                    print(f"Step {step_num}: Total quantity for 품번: {part_po}, 자재번호: {material_code}: {total_quantity}")
-                    time.sleep(3)
-                
-                except Exception as e:
-                    print(f"Step {step_num}: Error in summing quantities: {e}")
-                    continue
-
-                time.sleep(1)
-                
-                # 각 행의 인덱스를 유지하면서 합산된 수량을 저장
-                for index, row in filtered_rows.iterrows():
-                    self.matching_indices.append((row['인덱스'], part_po, material_code, total_quantity))
-                    print(f"Step {step_num}: Appended to matching_indices: (Index: {row['인덱스']}, 품번: {part_po}, 자재번호: {material_code}, 수량: {total_quantity})")
-                    
-                time.sleep(1)
+            self.results = []
             
-            # 결과 출력 및 반환
-            if not self.matching_indices:
-                no_match_message = f"Step {step_num}: No matching data found for any 품번/자재번호."
-                print(no_match_message)
-                return False, no_match_message
+            # filtered_data와 Json 데이터 비교
+            for index,value in filtered_data.items():
+                for json_data in po_data_list:
+                    json_part_po = json_data[0]
+                    json_bom_quantity = json_data[2]
+                    if value == json_part_po:
+                        self.results.append((index, value, json_bom_quantity))
             
-            print(f"Step {step_num}: Final matched rows indices and quantities:")
-            for item in self.matching_indices:
-                print(f"인덱스: {item[0]}, 품번: {item[1]}, 자재번호: {item[2]}, 합산수량: {item[3]}")
-
-            return self.matching_indices  # 배열 형식으로 반환
+            # 매칭되는 데이터가 없는 경우 
+            if not self.results:
+                self.logger.info(f"Step {step_num}: No matching results found")
+                return False, f"Step {step_num}: No matching results found."
+            
+            self.logger.debug(f"Step {step_num}: matching results: {self.results}")
+            # 리스트 형태의 튜플 반환 [ (인덱스,'P/O품번',BOM수량),(인덱스,'P/O품번',BOM수량),...]
+            return True, f"Step {step_num}: matching results: {self.results}"
 
         except Exception as e:
             error_message = f"Step {step_num}: find_matching_rows failed: {str(e)}"
@@ -600,34 +548,52 @@ class CW_ReservationManager:
             PyAutoGuiHelper.perform_click(step.pos_start)
             self.logger.info(f"Step {step_num}: Moved to start position at {step.pos_start}.")
             
-            start_index = 0
+            current_index = 0
             time.sleep(1)
             
-            # 일치하는 모든 인덱스를 순차적으로 처리
-            for item in self.matching_indices:
-                target_index, part_po, material_code, total_quantity  = item
-                self.logger.info(f"Step {step_num}: Moving from index {start_index} to {target_index}.")
-                time.sleep(3)
+            for result in self.results:
+                # results 튜플에서 추출
+                index, _, bom_quantity = result
+                
+                # 인덱스를 정수로 변환하여 이동에 문제 없도록 처리
+                target_index = int(index)
+                bom_quantity = str(bom_quantity)
                 
                 # 인덱스로 이동
-                PyAutoGuiHelper.move_to_index(start_index, target_index)
+                PyAutoGuiHelper.move_to_index(current_index, target_index)
+                self.logger.info(f"Step {step_num}: Moving from index {current_index} to {target_index}.")
                 time.sleep(1)
                 
-                # 수량 입력
-                pyperclip.copy(str(total_quantity))  # 합산된 수량을 복사
-                time.sleep(1)
-                pyautogui.hotkey('ctrl', 'v')
-                time.sleep(1)
+                # 현재 셀 값 복사
+                pyautogui.hotkey('ctrl','v')
+                time.sleep(0.5)
                 
-                # 체크박스 선택
+                #클립보드에 복사된 값을 읽음
+                cell_value = pyperclip.paste().strip()
+                self.logger.debug(f"Step {step_num} cell_value type: {type(cell_value)}")
+                time.sleep(0.5)
+                
+                if cell_value == 0 or "0":
+                    # 비활성화 상태
+                    self.logger.debug(f"Step {step_num}: Target cell is inactive. Skipping...")
+                else:
+                    # 활성화 상태로 간주하고 수량 입력
+                    pyautogui.hotkey('ctrl','a')
+                    time.sleep(1)
+                    pyautogui.write(bom_quantity)
+                    self.logger.info(f"Step {step_num}: Bom quantity [{bom_quantity}] input at index {target_index}.")
+                    
+                # 체크박스 체크
                 pyautogui.hotkey('shift', 'tab')
                 time.sleep(1)
                 pyautogui.press('space')
-                time.sleep(1)
                 self.logger.info(f"Step {step_num}: Checkbox checked at index {target_index}.")
+                
+                # 수량입력으로 다시 이동
+                pyautogui.press('right', presses=22)
                 time.sleep(1)
                 
-                start_index = target_index
+                current_index = target_index
                 time.sleep(1)
                 
             self.logger.info(f"Step {step_num}: Action performed on all matching rows successfully.")
