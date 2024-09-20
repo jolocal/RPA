@@ -479,7 +479,11 @@ class CW_ReqDueManager:
             self.logger.info(f"Step {step_num}: Starting 'find_matching_rows'.")
 
             # JSON 품번 리스트 가져옴
-            json_po_list = step.part_no #["품번1","품번2"...]
+            row_json_po_list = step.part_no #["품번1","품번2"...]
+            self.logger.debug(f"Step {step_num}: 최초 json_po_list : {row_json_po_list}")
+            
+            json_po_list = list(dict.fromkeys(row_json_po_list))
+            self.logger.debug(f"Step {step_num}: 중복 제거 json_po_list : {json_po_list}")
             
             #? 데이터 정규화 및 검증
             # 1. 양쪽 공백 제거
@@ -493,6 +497,9 @@ class CW_ReqDueManager:
             self.logger.debug(f"Step {step_num}: excel 'P/O품번' index {step.read_column} list : {excel_po_list}")
             
             # 일치하는 데이터와 그 인덱스 찾기
+            #? excel_po_list의 각 항목이 json_po_list에 있는지 확인하며, 인덱스와 값을 튜플로 저장함
+            #? json_po_list에 중복된 값이 있어도 excel_po_list의 항목이 json_po_list에 있는지만 확인하기 때문에, JSON 리스트의 중복은 매칭에 영향을 주지 않음.
+            #? 즉 JSON리스트의 중복된 항목 수와 상관없이 Excel 값이 json_po_list에 포함되는지만 따짐
             matches = [(index, value) for index, value in enumerate(excel_po_list) if value in json_po_list ]
             
             if not matches:
@@ -516,7 +523,7 @@ class CW_ReqDueManager:
             self.logger.info(f"Step {step_num}: Starting 'read_column_data'.")
             self.logger.info(f"Step {step_num}: Reading Excel file from {self.filepath}")
 
-            df = pd.read_excel(self.filepath, header=None, engine='openpyxl')
+            df = pd.read_excel(self.filepath, header=0, engine='openpyxl')
             self.logger.debug(f"Step {step_num}: Excel file loaded into DataFrame.")
             time.sleep(3)
         

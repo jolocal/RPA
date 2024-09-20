@@ -258,13 +258,6 @@ class PopupManager:
         logger.error(f"{attempts}/{max_attempts} attempts failed: {detected_text}")
 
         return False, detected_text
-        # if master_mode:
-        #     logger.debug(f"Clicking fallback coordinates at {pos_yes_btn} due to popup detection failure.")
-        #     pyautogui.moveTo(pos_yes_btn)
-        #     pyautogui.click(pos_yes_btn)
-        #     return True, f"Clicking fallback coordinates at {pos_yes_btn} due to popup detection failure."
-        
-        # else:
-        #     return False, detected_text
+
 
 

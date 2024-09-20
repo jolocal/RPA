@@ -25,6 +25,7 @@ from common.response_manager import ResponseManager
 from common.utils.helper import PyAutoGuiHelper
 from common.utils.path_utils import PathHelper
 
+from common.popup_handling_manager import PopupManager
 
 @dataclass
 class Step:
@@ -622,6 +623,21 @@ class CW_ReservationManager:
 
             #? 대기 예상
             time.sleep(5)
+            
+            # success_texts = ["거래명세서를","발행하시겠습니까?"]
+            # failure_texts = ["이미","납품예약된","정보는","중복예약하실","수","없습니다."]
+            
+            # success, detected_text = PopupManager.process_popup(
+            #     success_texts,
+            #     failure_texts,
+            #     step.step.pos_popup_ok_btn   
+            # )
+            
+            # if not success:
+            #     self.logger.debug(f"Step {step_num}: Failed to process popup. Last detected text: '{detected_text.strip()}'.")
+            #     return False, f"Failed to process '납품예약' popup. Last detected text: '{detected_text.strip()}'."
+            
+            # self.logger.debug(f"Step {step_num}: process_popup result - success: {success}, detected_text: {detected_text}")   
             
             # 거래명세서를 발행하시겠습니까? 예 클릭
             PyAutoGuiHelper.perform_click(step.pos_popup_ok_btn) # 1426,870
