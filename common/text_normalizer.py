@@ -18,9 +18,12 @@ def normalize_for_pallet_creation(text):
     return text
 
 def normalize_for_batch_input(text):
-    text = re.sub(r'일괄입력', '일괄입력', text)
+    text = re.sub(r'일팔입력', '일괄입력', text)
     text = re.sub(r'반영', '반영', text)
     text = re.sub(r'되었습니다.', '되었습니다.', text)
+    return text
+
+def normalize_for_generate_invoice(text):
     return text
 
 def normalize_text(text, popup_type):
@@ -30,4 +33,6 @@ def normalize_text(text, popup_type):
         text = normalize_for_pallet_creation(text)
     elif popup_type == 'batch_input':
         text = normalize_for_batch_input(text)
+    elif popup_type == 'generate_invoice':
+        text = normalize_for_generate_invoice(text)
     return text

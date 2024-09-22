@@ -631,7 +631,7 @@ class CW_ReqDueManager:
             time.sleep(1)
             
             
-            success_texts = ["일괄입력","반영","되었습니다."]
+            success_texts = ["반영","되었습니다."] # 일괄입력 단어 실패 팝업창에도 나타남.
             
             success, detected_text = PopupManager.process_popup(
                 success_texts,
@@ -647,16 +647,7 @@ class CW_ReqDueManager:
             else:
                 self.logger.debug(f"Step {step_num}: Failed to process popup. Last detected text: '{detected_text.strip()}'.")
                 return False, f"Failed to process '일괄반영'popup. Last detected text: '{detected_text.strip()}'."
-                        
-            # if not success:
-            #     self.logger.debug(f"Step {step_num}: Failed to process popup. Last detected text: '{detected_text.strip()}'.")
-            #     return False, f"Failed to process '일괄반영'popup. Last detected text: '{detected_text.strip()}'."
-            
-            # self.logger.debug(f"Step {step_num}: process '일괄반영' popup result - success: {success}, detected_text: {detected_text}")   
-            
-            # PyAutoGuiHelper.perform_click(step.pos_confirm_btn)
-            # self.logger.info(f"Step {step_num}: Clicking '일괄입력 반영 되었습니다.' button at position {step.pos_confirm_btn}. / pos_confirm_btn: {step.pos_confirm_btn}")
-            
+
             time.sleep(3)
             success, message = self.detect_loading(step_num, step)
             if not success:

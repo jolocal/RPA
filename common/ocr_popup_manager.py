@@ -130,32 +130,6 @@ class PopupManager:
         logger.debug(f"Text cached with hash: {hash_value}")
         
         return normalized_text
-    
-    @staticmethod
-    def normalize_text(text):
-        """
-        OCR이 잘못 인식한 텍스트를 정규화하여 보정합니다.
-        : param text: 원본 추출된 텍스트
-        : return: 정규화된 텍스트
-        """
-        
-        # Success
-        text = re.sub(r'히터생성', 'Pallet생성', text)
-        text = re.sub(r'a', '예', text)
-        text = re.sub(r'마니모', '아니오', text)
-        text = re.sub(r'9인','확인',text)
-        
-        # Failed    
-        text = re.sub(r'대상미', '대상이', text)
-        text = re.sub(r'미(가)', '이(가)', text)
-        text = re.sub(r'존재하지 많습니다.','존재하지 않습니다.',text)
-        
-        # CG) 미미 『헤하 번호가 생성된 데미터 입니다,
-        text = re.sub(r'미미.','이미',text)
-        text = re.sub(r'데미터.','데이터',text)
-
-        
-        return text
 
 
     @staticmethod
