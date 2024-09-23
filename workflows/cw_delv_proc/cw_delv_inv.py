@@ -520,6 +520,12 @@ class CW_ReservationManager:
             filtered_data = excel_data.astype(str).str.strip()
             self.logger.debug(f"Step {step_num}: Extracted data: \n{filtered_data}")
             
+            #!수정!!!!!
+            #! 중복된 P/O품번이 있을때 차수가 낮은 데이터만 체크 (단, 납품예약이 가능한 상태일때만)
+            # 중복된 값의 첫 번째 항목을 제외한 나머지 항목을 중복으로 인식하고, 이를 제거하여 가장 낮은 인덱스의 항목만 남김
+            filtered_data = filtered_data[~filtered_data.duplicated(keep='first')]
+            self.logger.debug(f"Step {step_num}: Extracted data with duplicates removed: \n{filtered_data}")
+            
             #? JSON 데이터 (P/O품번, 자재번호, BOM수량)
             po_data_list =  step.po_data_list
             self.logger.debug(f"Step {step_num}: po_data_list (type{type(po_data_list)}): \n {po_data_list}")
@@ -549,7 +555,7 @@ class CW_ReservationManager:
                 if value in result_dict:
                     self.results.append((index, value, result_dict[value]))
                     self.logger.debug(f"Matched: Index {index}, Value {value}, BOM Quantity {result_dict[value]}")
-
+                    
             self.logger.debug(f"Step {step_num}:  filtered_data와 Json_data 비교: \n {self.results}")
 
             # 매칭되는 데이터가 없는 경우 

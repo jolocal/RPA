@@ -18,6 +18,12 @@ def detect_popup(image):
     region_x_end = 1350
     region_y_end = 650
     
+    # script_4:거래명세서발행
+    # region_x_start = 724
+    # region_y_start = 474
+    # region_x_end = region_x_start + 698
+    # region_y_end = region_y_start + 166
+    
     # 해당 영역을 추출
     region_of_interest = image[region_y_start:region_y_end, region_x_start:region_x_end]
     

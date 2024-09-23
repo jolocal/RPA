@@ -684,6 +684,8 @@ class HN_ReservationManager:
     ############################################# step_6 #############################################  
     #! 5번째 행 이후부터 홀수 행 클릭시 그룹화됨 (5,6 그룹 / 7,8 그룹)
     #! 개별 작업이 아님
+    
+    #! 엑셀 데이터로 비교
     def reserve_delivery(self, step_num:int, step:Step):
         try: 
             time.sleep(3)

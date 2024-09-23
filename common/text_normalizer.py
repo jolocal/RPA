@@ -24,6 +24,7 @@ def normalize_for_batch_input(text):
     return text
 
 def normalize_for_generate_invoice(text):
+    text = re.sub(r'HH SMA S', '거래명세서를', text)
     return text
 
 def normalize_text(text, popup_type):
