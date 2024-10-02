@@ -7,7 +7,7 @@ import os
 import pytesseract
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 from PIL import ImageGrab
-from common.utils.path_utils import PathHelper
+
 from PIL import Image, ImageChops, ImageGrab
 
 from common.logger_manager import LoggerManager
@@ -15,7 +15,7 @@ from common.utils.path_utils import PathHelper
 
 
 class LoadingIconManager:
-    def __init__(self, threshold=0.8, check_interval=0.1, max_wait_time=1500, disappearance_check_time=5, center_search_size=(200, 200)):
+    def __init__(self, threshold=0.8, check_interval=0.1, max_wait_time=900, disappearance_check_time=10, center_search_size=(200, 200)):
         self.logger = LoggerManager.get_logger(__name__)
         self.search_center = True
         self.threshold = threshold
@@ -110,7 +110,7 @@ class LoadingIconManager:
         consecutive_absent_time = 0
         icon_disappeared_start_time = None  # 로딩 아이콘이 사라진 시간을 기록하기 위한 변수
         
-        while time.time() - start_time < self.max_wait_time:  # 최대(3분) 대기 시간까지 반복
+        while time.time() - start_time < self.max_wait_time:  # 최대(15분) 대기 시간까지 반복
             
             if self.is_loading_icon_present():
                 self.logger.debug("로딩 아이콘 감지됨, 로딩이 사라질 때까지 대기 중...")
@@ -123,7 +123,7 @@ class LoadingIconManager:
 
                 consecutive_absent_time = time.time() - icon_disappeared_start_time
 
-                if consecutive_absent_time >= self.disappearance_check_time:  # 로딩 아이콘이 사라진 후 5초 동안 재등장하지 않으면 로딩 완료로 간주
+                if consecutive_absent_time >= self.disappearance_check_time:  # 로딩 아이콘이 사라진 후 10초 동안 재등장하지 않으면 로딩 완료로 간주
                     self.logger.debug("로딩 완료로 간주됨.")
                     return True
 

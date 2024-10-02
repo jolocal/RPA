@@ -8,7 +8,11 @@
             "C:/work/RPA_python3.7_20240824/src/templates/loading/loading_icon_3.png",
             "C:/work/RPA_python3.7_20240824/src/templates/loading/loading_icon_4.png"
         ],
-        "popup_close_btn_image": "C:/work/RPA_python3.7_20240824/src/templates/btn/close_btn.png"
+        "popup_close_btn_image": "C:/work/RPA_python3.7_20240824/src/templates/btn/close_btn.png",
+        "checkbox_state_image": [
+            "C:/work/RPA_python3.7_20240824/src/templates/checkbox/unchecked.png",
+            "C:/work/RPA_python3.7_20240824/src/templates/checkbox/checked.png"
+        ]
     },
     "master_mode": true
 }

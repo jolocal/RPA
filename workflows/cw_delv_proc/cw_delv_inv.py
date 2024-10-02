@@ -8,7 +8,11 @@ import json
 import time
 import pyautogui
 import pyperclip
-import pandas as pd 
+import pandas as pd
+
+import keyboard
+import threading
+
 import pytesseract
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
@@ -24,7 +28,7 @@ from common.logger_manager import LoggerManager
 from common.response_manager import ResponseManager
 from common.utils.helper import PyAutoGuiHelper
 from common.utils.path_utils import PathHelper
-
+from common.loading_icon_manager import SuperLoadingManager
 from common.ocr_popup_large_manager import PopupManager
 
 @dataclass
@@ -97,7 +101,7 @@ class Contexts:
 class CW_ReservationManager:
 
     def __init__(self, json_data, logger, loading, res, master_mode):
-            # JSON 문자열에서 백슬래시 문자를 두 번으로 바꿉니다.
+        # JSON 문자열에서 백슬래시 문자를 두 번으로 바꿉니다.
         json_data = json_data.replace('\\', '\\\\')
         self.data = json.loads(json_data, encoding='utf-8')
         
@@ -116,6 +120,11 @@ class CW_ReservationManager:
         print(f"master_mode in StartApp: {self.master_mode}")
         logger.debug(f"master_mode in StartApp: {self.master_mode}")
 
+        #! 초기화 이후 모니터링 시작
+        self.stop_signal = False  # stop_signal 초기화
+        self.terminated = False 
+        self.start_input_monitoring() # 키 입력 감지 시작
+
         # JSON 데이터를 Contexts 객체로 변환
         self.contexts = Contexts(
             step_1 = Step(**self.data['contexts']['step_1']),
@@ -128,6 +137,46 @@ class CW_ReservationManager:
             step_8 = Step(**self.data['contexts']['step_8']),
             step_9 = Step(**self.data['contexts']['step_9']),
         )
+        
+    #TODO#################################################강제종료################################################
+    
+    def start_input_monitoring(self):
+        """ 비동기 키 입력 감지 스레드 시작 """
+        input_thread = threading.Thread(target=self.monitor_key_input, daemon = True)
+        input_thread.start()
+        
+    def monitor_key_input(self):
+        """ 키 입력을 감지하여 특정 키 입력 시 강제 종료 """
+        self.logger.debug(f"모니터링 시작: 특정 키('q') 입력시 강제 종료합니다.")
+        keyboard.add_hotkey('shift+q', self.force_terminate)
+        
+        # 스레드가 종료될 때까지 무한 대기, 대기 중에 종료 신호가 있으면 루프 종료
+        while not self.stop_signal:
+            time.sleep(0.1) # CPU 점유율을 낮추기 위해 짧은 대기
+    
+    def force_terminate(self):
+        """ 강제 종료를 처리하는 메서드 """
+        self.logger.info("사용자가 'Shift + Q' 키를 입력하여 프로세스를 강제 종료합니다.")
+        print("사용자가 'Shift + Q' 키를 입력하여 프로세스를 강제 종료합니다.")
+        
+        self.stop_signal = True # 스레드 종료를 위해 stop_signal을 True로 설정
+        self.terminated = True  # 종료 신호 설정
+        
+        # 응답을 준비하여 LabVIEW에 보내기
+        self.res.add_contexts(0, "force_terminate", "exit", "Process terminated by user input (Shift + Q).")
+        response = self.res.to_json()  # 응답을 호출한 곳에 반환하여 LabVIEW로 전송
+        print(f"{response}")
+        # 응답 반환 후 메인 스레드에서 직접 종료 실행
+        os._exit(0)  # 프로그램을 강제로 종료
+        #? 랩뷰로 전송 가는지 체크 (아마 안갈거임)
+        return response  # 응답을 반환하여 LabVIEW로 전송
+    
+    def stop(self):
+        # 프로그램 종료 시 호출되는 메서드
+        self.stop_signal = True  # 스레드 종료를 위한 신호 설정
+    
+    #TODO#############################################################################################################
+
         
     def execute_task(self, step_num, step:Step):    
         task_map = {
@@ -180,8 +229,6 @@ class CW_ReservationManager:
             pyperclip.copy(search_str)
             self.logger.info(f"Step {step_num}: Search term '{step.search_str}' copied to clipboard.")
             
-            time.sleep(3)
-            
             # 입력란 클릭 후 '개선' 입력 및 엔터
             pyautogui.hotkey('ctrl', 'v')
             self.logger.info(f"Step {step_num}: Search term pasted from clipboard.")
@@ -193,6 +240,8 @@ class CW_ReservationManager:
             
             PyAutoGuiHelper.perform_double_click(step.pos_deliv_res) # 902,479
             self.logger.info(f"Step {step_num}: '납품예약(개선)' tab clicked at position / pos_deliv_res: {step.pos_deliv_res}.") 
+            
+            # 새창 로드
             
             time.sleep(3)
             success, message = self.detect_loading(step_num, step)
@@ -427,7 +476,7 @@ class CW_ReservationManager:
             self.logger.info(f"Step {step_num}: Excel file saved successfully as {self.filepath}.")
             
             # 파일 저장중....
-            time.sleep(5)    
+            time.sleep(8)    
             self.logger.debug(f"Step {step_num}: Waiting for 5 seconds after saving file.")
             
             # 파일 존재 확인
@@ -493,10 +542,12 @@ class CW_ReservationManager:
             material_code_idx = read_columns[2]
             reserv_num_idx = 10
             
+            #! 읽어오는 열 데이터가 문자열이 아닌 경우, 컨디션 체크시 .str.isspace() 에러 발생
+            #! 열 데이터를 읽을때 문자열로 변환하고 filtered_data에서 문자열 변환은 제거
             # P/O품번, 납품예약불가사유 열 데이터 선택
-            part_po_row = df.iloc[:, part_po_idx] # po품번
-            cause_row = df.iloc[:, cause_idx] # 납품예약불가사유
-            reserv_num_row = df.iloc[:, reserv_num_idx] # 납품예약번호
+            part_po_row = df.iloc[:, part_po_idx].astype(str) # po품번
+            cause_row = df.iloc[:, cause_idx].astype(str) # 납품예약불가사유
+            reserv_num_row = df.iloc[:, reserv_num_idx].astype(str) # 납품예약번호
 
             # NaN, 빈 문자열, 공백 문자열, None 조건을 만족하는지 확인
             condition = (
@@ -517,7 +568,7 @@ class CW_ReservationManager:
             
             # 추출한 데이터 문자열 변환후 공백 제거
             #! filtered_data: 키는 엑셀 데이터의 인덱스, 값은 p/o품번 문자열
-            filtered_data = excel_data.astype(str).str.strip()
+            filtered_data = excel_data.str.strip()
             self.logger.debug(f"Step {step_num}: Extracted data: \n{filtered_data}")
             
             #!수정!!!!!
@@ -619,7 +670,7 @@ class CW_ReservationManager:
                     
                 # 체크박스 체크
                 pyautogui.hotkey('shift', 'tab')
-                time.sleep(1)
+                time.sleep(0.5)
                 pyautogui.press('space')
                 self.logger.info(f"Step {step_num}: Checkbox checked at index {target_index}.")
                 
@@ -664,7 +715,7 @@ class CW_ReservationManager:
             if success:
                 self.logger.debug(f"Step {step_num}: process '납품예약' popup result - success: {success}, detected_text: {detected_text}")   
                 PyAutoGuiHelper.perform_click(step.pos_popup_ok_btn)
-                self.logger.info(f"Step {step_num}: Clicking '거래명세서를 발행하시겠습니까?.' button at position {step.pos_confirm_btn}. / pos_confirm_btn: {step.pos_confirm_btn}")
+                self.logger.info(f"Step {step_num}: Clicking '거래명세서를 발행하시겠습니까?.' button at position {step.pos_popup_ok_btn}. / pos_popup_ok_btn: {step.pos_popup_ok_btn}")
             else:
                 self.logger.debug(f"Step {step_num}: Failed to process popup. Last detected text: '{detected_text.strip()}'.")
                 return False, f"Failed to process '납품예약'popup. Last detected text: '{detected_text.strip()}'."
@@ -703,7 +754,8 @@ class CW_ReservationManager:
             # 닫기 클릭
             PyAutoGuiHelper.perform_click(step.pos_popup_close_btn_2) # 1426,870
             self.logger.info(f"Step {step_num}: Clicking '팝업 닫기' button at pos_popup_close_btn_2: {step.pos_popup_close_btn_2}.")
-            time.sleep(1)
+            
+            time.sleep(5)
             
             
             self.logger.info(f"Step {step_num}: reserve_delivery' completed successfully.")
@@ -718,7 +770,7 @@ class CW_ReservationManager:
     
     def print_invoice(self, step_num:int, step:Step):
         try:
-            time.sleep(5)   
+            time.sleep(3)   
             self.logger.info(f"Step {step_num}: Starting 'print_invoice'.") 
 
             # 거래명세서출력 버튼 클릭
@@ -746,7 +798,9 @@ class CW_ReservationManager:
             # 전체페이지 프린트 확인 클릭
             PyAutoGuiHelper.perform_click(step.pos_trns_confirm_btn_1) # 1426,870
             self.logger.info(f"Step {step_num}: Clicking '전체페이지 1부 인쇄 확인'button at pos_trns_confirm_btn_1: {step.pos_trns_confirm_btn_1}.")
-            time.sleep(1)
+            
+            # 프린트 대기열 추가시간
+            time.sleep(5)
             
             # 닫기 클릭
             PyAutoGuiHelper.perform_click(step.pos_trns_close_btn) # 1426,870
@@ -782,7 +836,7 @@ class CW_ReservationManager:
             # 현재 창 닫기
             for i in range(2):
                 self.logger.debug(f"Step {step_num}: Pressing 'alt + x' to close all windows. (Attempt {i+1})")
-                pyautogui.hotkey('alt','x', interval=1)
+                pyautogui.hotkey('alt','x', interval=0.5)
                 
             self.logger.info(f"Step {step_num}: Finished pressing 'alt + x' {i+1} times.")
 
@@ -843,11 +897,16 @@ def execute_cw_delv_inv(json_data: str):
     manager = CW_ReservationManager(json_data, logger, loading, res, master_mode)
 
     try: 
-        
         total_steps = len(manager.contexts.__annotations__) # Contexts 클래스의 모든 스텝 필드를 카운트
         for step_num in range(1, total_steps + 1):
             step = getattr(manager.contexts, f'step_{step_num}')
             result = manager.execute_task(step_num, step)
+            
+            # 종료 신호가 설정되었는지 확인
+            if manager.terminated:
+                logger.info("Terminated by user input.")
+                print("Terminated by user input.")
+                return manager.force_terminate()
             
             if result is not None: # 실패 메시지이면
                 logger.error(f"Error occurred at step {step_num}: {res.to_json()}")
@@ -856,6 +915,9 @@ def execute_cw_delv_inv(json_data: str):
     except Exception:
         logger.error(f"Response on exception: {res.to_json()}")
         return res.to_json() # 오류 발생시 즉시 응답
+    
+    finally:
+        manager.stop()  # 종료 시 호출하여 스레드 종료
     
     logger.debug(f"Process completed successfully. Response: {res.to_json()}")
     return res.to_json() # 모든 스텝이 정상적으로 완료되었을때 즉시 응답

@@ -203,12 +203,10 @@ class PopupManager:
 
                 if button_location is not None:
                     logger.info(f"Attempt {attempts + 1}: Popup detected!")
-                    # 닫기 버튼의 중앙으로 마우스를 이동하고 클릭합니다
-                    button_point = pyautogui.center(button_location)
+                    button_point = pyautogui.center(button_location) # 닫기 버튼의 중앙으로 마우스를 이동하고 클릭합니다
                     pyautogui.click(button_point)
                     logger.info(f"Popup closed! ({successful_closes + 1})")
                     successful_closes += 1  # 성공적으로 닫기 버튼을 클릭한 경우 카운트 증가
-                    
                     time.sleep(1)  # 팝업이 다시 뜨는 것을 방지하기 위해 잠시 대기
                     attempts = 0  # 닫기 버튼을 찾았으므로 시도 횟수 초기화
 
@@ -223,8 +221,11 @@ class PopupManager:
                 attempts += 1  # 오류 발생 시에도 시도 횟수는 증가시킵니다.
                 time.sleep(sleep_time)
 
-        logger.info(f"Max attempts reached. Total popups closed: {successful_closes}")
-        # 팝업을 성공적으로 닫은 수와 상관없이 작업을 성공으로 처리
+        if successful_closes == 0:
+            logger.error(f"{max_attempts}번 시도 후에도 팝업을 닫지 못했습니다.")
+            return False, f"No popups closed after {max_attempts} attempts"
+        
+        logger.info(f"최대 시도 횟수에 도달했습니다. 총 닫은 팝업 수: {successful_closes}")
         return True, f"Popup detection finished. Total popups closed: {successful_closes}."
 
     @staticmethod

@@ -9,6 +9,10 @@ import time
 import pyautogui
 import pyperclip
 import pandas as pd 
+
+import keyboard
+import threading
+
 import pytesseract
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 

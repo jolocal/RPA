@@ -2,7 +2,10 @@ import json
 import os
 import sys
 import time
-import pytesseract
+
+from typing import Tuple,Optional
+from dataclasses import dataclass
+
 import pytesseract
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
@@ -18,6 +21,8 @@ from common.loading_manager import LoadingIconManager
 from common.utils.helper import PyAutoGuiHelper
 from common.utils.keyboard_utils import CapslockHelper
 from common.utils.path_utils import PathHelper
+from common.ocr_popup_large_manager import PopupManager
+from common.loading_icon_manager import SuperLoadingManager
 
 # sg_start_login.py에 있는 StartApp 클래스를 임포트
 from workflows.sg_start_login import StartApp
@@ -51,27 +56,28 @@ json_data = {
 # JSON 데이터를 문자열로 변환
 json_data_str = json.dumps(json_data)
 
-# CW_ReqDueManager 객체를 생성합니다.
+master_mode =  PathHelper.get_config_value('master_mode',False) 
 logger = LoggerManager.get_logger(__name__)
+super_loading_manager = SuperLoadingManager()
 loading_manager = LoadingIconManager()
+large_popup_manager = PopupManager()
 res = ResponseManager()
-master_mode =  PathHelper.get_config_value('master_mode',False)
 
-manager = StartApp(json_data_str, logger, loading_manager, res, master_mode)
+manager = StartApp(json_data_str, logger, super_loading_manager, loading_manager, large_popup_manager, res, master_mode)
 
 # 원하는 스텝 넘버를 지정합니다.
 step_num = 2
 step = manager.contexts.step_2  # 원하는 스텝에 맞게 변경하세요.
 
 # 개별 메서드를 호출하여 테스트합니다.
-print("start")
+print("1번 프로세스 start")
 manager.start_application(1, manager.contexts.step_1)
 print("end")
 time.sleep(1)
-print("start")
+print("2번 프로세스 start")
 manager.login(2, manager.contexts.step_2)
 print("end")
 time.sleep(1)
-print("start")
+print("3번 프로세스 start")
 manager.access_work_system(3, manager.contexts.step_3)
 print("end")
