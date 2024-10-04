@@ -13,16 +13,16 @@ def take_screenshot():
 # 특정 영역에서 팝업창을 감지하는 함수
 def detect_popup(image):
     # 팝업창이 자주 나타나는 영역A00
-    region_x_start = 800
-    region_y_start = 450
-    region_x_end = 1350
-    region_y_end = 650
+    # region_x_start = 800
+    # region_y_start = 450
+    # region_x_end = 1350
+    # region_y_end = 650
     
     # script_4:거래명세서발행
-    # region_x_start = 724
-    # region_y_start = 474
-    # region_x_end = region_x_start + 698
-    # region_y_end = region_y_start + 166
+    region_x_start = 724
+    region_y_start = 474
+    region_x_end = region_x_start + 698
+    region_y_end = region_y_start + 166
     
     # 해당 영역을 추출
     region_of_interest = image[region_y_start:region_y_end, region_x_start:region_x_end]

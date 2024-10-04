@@ -20,19 +20,17 @@ from common.utils.path_utils import PathHelper
 from hn_delv_proc import HN_ReservationManager
 
 
-# 예시 JSON 데이터를 준비합니다. 사용자가 직접 입력할 수 있습니다.
 json_data = {
     "contexts": {
         "step_1": {
             "task": "move_to_menu",
-            #! 추가됨 (pos_material_tab, *pos_pallet_tab , pos_vali value값 다르게 실행됨)
             "pos_material_tab":[75, 343],
             "pos_pallet_tab": [110, 680],
             "pos_vali": [480, 231]
         },
         "step_2": {
             "task": "search_po_num",
-            "po_no": "P13PA00031",
+            "po_no": "P12XA03904",
             "pos_po": [443, 183],
             "pos_status": [1149, 182],
             "status_options": [
@@ -42,19 +40,23 @@ json_data = {
                 [962, 295]
             ],
             "pos_search_btn": [1161, 313],
-            "pos_popup_btn": [1075, 599]
+            "pos_popup_btn": [1075, 599] 
         },
         "step_3": {
             "task": "find_and_input_inbound_date",
             "pos_excel": [1175, 440],
             "pos_save_btn": [916, 580],
+            #! 수정
             "read_column": 4,
             "pos_start": [724, 502],
+            #! 수정
             "target_codes": [
-                "Q2643CT016L00001",
-                "Q2643CT015L00001"
+                ["HH391PUUF200", "Q2471CT01ZL00001", "3"],
+                ["HH391SUUF200","Q2471CT020L00001","3"],
+                ["HH392PUUF200","Q2471CT01ZL00001","1"],
+                ["HH392SUUF200","Q2471CT020L00001","1"]
             ],
-            "inbound_date": "20240913"
+            "inbound_date": "20240930"
         },
         "step_4": {
             "task": "generate_pallet",
@@ -163,6 +165,7 @@ print("6 - start")
 manager.reserve_delivery(6, manager.contexts.step_6)
 print("6 - end")
 
+time.sleep(2)
 print("7 - start")
 manager.print_invoice_and_details(7, manager.contexts.step_7)
 print("7 - end")

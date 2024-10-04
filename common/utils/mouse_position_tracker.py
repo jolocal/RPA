@@ -83,6 +83,8 @@ if __name__ == "__main__":
 #         return
     
 
+
+
 #     # 팝업 창의 폭과 높이를 계산
 #     width = right - left
 #     height = bottom - top
@@ -96,6 +98,7 @@ if __name__ == "__main__":
 
 
 # def print_mouse_position():
+
     """==================================================
     from PIL import ImageGrab (left, top, right, bottom)
     =================================================="""

@@ -16,6 +16,7 @@ from common.utils.helper import PyAutoGuiHelper
 from common.utils.keyboard_utils import CapslockHelper
 from common.utils.path_utils import PathHelper
 
+
 from cw_delv_inv import CW_ReservationManager
 
 
@@ -110,7 +111,8 @@ master_mode = PathHelper.get_config_value('master_mode',False)
 logger = LoggerManager.get_logger(__name__)
 loading = LoadingIconManager()
 res = ResponseManager()
-manager = CW_ReservationManager(json_data_str, logger, res, loading, master_mode)
+manager = CW_ReservationManager(json_data_str, res, logger, loading, master_mode)
+
 
 # 원하는 스텝 넘버를 지정합니다.
 step_num = 2
@@ -118,38 +120,38 @@ step = manager.contexts.step_2  # 원하는 스텝에 맞게 변경하세요.
 
 # 개별 메서드를 호출하여 테스트합니다.
 
-# print("1- start")
-# manager.navigate_to_deliv_reserv_improv(1, manager.contexts.step_1)
-# print("1- end")
+print("1- start")
+manager.navigate_to_deliv_reserv_improv(1, manager.contexts.step_1)
+print("1- end")
 
-# print("2 - start")
-# manager.load_po_table_data(2, manager.contexts.step_2)
-# print("2- end")
+print("2 - start")
+manager.load_po_table_data(2, manager.contexts.step_2)
+print("2- end")
 
-# print("3 - start")
-# manager.input_vehicle_information(3, manager.contexts.step_3)
-# print("3- end")
+print("3 - start")
+manager.input_vehicle_information(3, manager.contexts.step_3)
+print("3- end")
 
-# print("4 - start")
-# manager.save_and_verify_excel(4, manager.contexts.step_4)
-# print("4- end")
+print("4 - start")
+manager.save_and_verify_excel(4, manager.contexts.step_4)
+print("4- end")
 
-# print("5 - start")
-# manager.find_matching_rows(5, manager.contexts.step_5)
-# print("5- end")
+print("5 - start")
+manager.find_matching_rows(5, manager.contexts.step_5)
+print("5- end")
 
-# print("6 - start")
-# manager.navigate_to_matching_rows(6, manager.contexts.step_6)
-# print("6- end")
+print("6 - start")
+manager.navigate_to_matching_rows(6, manager.contexts.step_6)
+print("6- end")
 
 print("7 - start")
 manager.reserve_delivery(7, manager.contexts.step_7)
 print("7- end")
 
-# print("8 - start")
-# manager.print_invoice(8, manager.contexts.step_8)
-# print("8- end")
+print("8 - start")
+manager.print_invoice(8, manager.contexts.step_8)
+print("8- end")
 
-# print("9 - start")
-# manager.reset_for_po_number_search(9, manager.contexts.step_9)
-# print("9- end")
+print("9 - start")
+manager.reset_for_po_number_search(9, manager.contexts.step_9)
+print("9- end")
