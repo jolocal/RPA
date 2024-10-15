@@ -6,6 +6,10 @@ import json
 import time
 import pyperclip
 import traceback
+<<<<<<< HEAD
+=======
+import pytesseract
+>>>>>>> 17c65f4bd86bb6adbb6bb249df210dc8f0aca344
 from PIL import Image
 import cv2
 import numpy as np

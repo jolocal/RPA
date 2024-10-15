@@ -19,96 +19,40 @@ ex = r'C:\work\RPA_python3.7_20240824\reports\변경납기관리\직납_직사�
 일반납품예약 = r'C:\work\RPA_python3.7_20240824\reports\일반납품예약\일반 납품예약_20240902_162150..xlsx'
 일반납품예약2 = r"C:\work\RPA_python3.7_20240824\reports\일반납품예약\일반 납품예약_20240903_134605..xlsx"
 
-test = r"C:\work\RPA_python3.7_20240824\reports\직납직사급\직납_직사급_Pallet_관리_20240828_171355.xlsx"
 
-성공케이스1 = r"C:\Users\123\Desktop\일반납품예약\성공\P12XA03905.xlsx"
+#TODO SCRIPT_3
+# df = pd.read_excel(P12XA03901, engine='openpyxl', sheet_name=0, header=0 )
 
-df = pd.read_excel(성공케이스1, header=0, engine = 'openpyxl')
-empty_rows = df[df.isnull().any(axis=1)]
-
-print(f">>>>>>>>>> 원보 데이터: \n")
-print(df)
-
-print(f">>>>>>>>>>> 빈 값이 있는 행: \n")
-print(empty_rows.index.tolist)
-
-# df = pd.read_excel(test, header=0, engine='openpyxl')
+#? 모든 컬럼 출력하기
 # print(df)
 # columns = df.columns
 # print(f"모든 컬럼: {columns}")
 
-# read_column = [2,4,7]
-# activity = read_column[0]
-# material_code = read_column[1]
-# quantity = read_column[2]
+#? 엑셀 데이터 출력 갯수 확인
+# read_column = 8
+# po_data = df.iloc[:, read_column].tolist()
 
-# # 각 열 데이터를 리스트로 변환 후 공백 제거
-# activity_list = df.iloc[:, activity].astype(str).apply(str.strip).tolist()
-# material_code_list = df.iloc[:, material_code].astype(str).apply(str.strip).tolist()
-# quantity_list = df.iloc[:, quantity].astype(str).apply(str.strip).tolist()
-# print(f"activity_list: \n: [{activity_list}]")
-# print(f"material_code_list: \n: [{material_code_list}]")
-# print(f"quantity_list: \n: [{quantity_list}]")
-# index_list = df.index.tolist()  # 엑셀의 행 인덱스 리스트
-# combined_data = list(zip(index_list, activity_list, material_code_list, quantity_list))
-
-# # 결과 출력
-# pprint(f"combined_data: \n {combined_data}")
-
-# # json_list로 받은 target_codes
-# target_codes = [
-#     ["HE211PUUF200", "Q2630CT00SL00001", "2"],
-#     ["HH510PUUF100", "Q2630CT025L00001", "1"],
-#     ["HH510PUUF100", "Q2630CT026L00001", "1"]
-# ]
-
-# matching_data = []
-
-# for target in target_codes:
-#     target_activity, target_material_code, target_quantity = target
-    
-#     # combined_data에서 일치하는 항목 찾기
-#     for index, activity, material_code, quantity in combined_data:
-#         if (activity == target_activity and material_code == target_material_code and str(quantity) == str(target_quantity)):
-#             matching_data.append((index, activity, material_code, quantity))
-
-# # 결과 출력
-# print(f"일치하는 데이터: \n{matching_data}")
+# print(f"po_data(total:{len(po_data)}/type:{type(po_data)}): \n {po_data}")
 
 
-# #TODO SCRIPT_3
-# # df = pd.read_excel(P12XA03901, engine='openpyxl', sheet_name=0, header=0 )
+#? 엑셀 데이터 타입 확인
+# po_data_str = df['P/O\n품번'].astype(str)
+# print(f"문자열로 변환된 P/O 품번 데이터: \n {po_data_str}")
 
-# #? 모든 컬럼 출력하기
-# # print(df)
-# # columns = df.columns
-# # print(f"모든 컬럼: {columns}")
+# # 양쪽 공백 제거
+# normalized_data = [ item.strip() for item in po_data_str ]
 
-# #? 엑셀 데이터 출력 갯수 확인
-# # read_column = 8
-# # po_data = df.iloc[:, read_column].tolist()
+# for i in normalized_data:
+#     print(f"po 데이터: [{i}] / 데이터 타입: {type(i)}")
 
-# # print(f"po_data(total:{len(po_data)}/type:{type(po_data)}): \n {po_data}")
+#TODO SCRIPT_4 
+df = pd.read_excel(일반납품예약2, engine='openpyxl', sheet_name=0, header=0)
+print(df)
 
+read_columns = [0,3,12]
 
-# #? 엑셀 데이터 타입 확인
-# # po_data_str = df['P/O\n품번'].astype(str)
-# # print(f"문자열로 변환된 P/O 품번 데이터: \n {po_data_str}")
-
-# # # 양쪽 공백 제거
-# # normalized_data = [ item.strip() for item in po_data_str ]
-
-# # for i in normalized_data:
-# #     print(f"po 데이터: [{i}] / 데이터 타입: {type(i)}")
-
-# #TODO SCRIPT_4 
-# df = pd.read_excel(일반납품예약2, engine='openpyxl', sheet_name=0, header=0)
-# print(df)
-
-# read_columns = [0,3,12]
-
-# part_po_idx = read_columns[0]
-# cause_idx = read_columns[1]
+part_po_idx = read_columns[0]
+cause_idx = read_columns[1]
 
 # part_po_list = df.iloc[:, part_po_idx]
 # cause_list = df.iloc[:, cause_idx]

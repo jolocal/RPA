@@ -100,7 +100,7 @@ class Contexts:
     step_9: Step
     
 class CW_ReservationManager:
-    def __init__(self, json_data: str, res, logger, loading, master_mode:bool = False):
+    def __init__(self, json_data: str, res, logger, super_loading_manager, loading, master_mode:bool = False):
         # JSON 문자열에서 백슬래시 문자를 두 번으로 바꿉니다.
         json_data = json_data.replace('\\', '\\\\')
         self.data = json.loads(json_data, encoding='utf-8')
@@ -110,7 +110,10 @@ class CW_ReservationManager:
         
         self.logger = logger
         self.res = res
+        
         self.loading = loading
+        self.super_loading_manager = super_loading_manager
+        
         self.master_mode = master_mode
         print(f"master_mode in StartApp: {self.master_mode}")
         logger.debug(f"master_mode in StartApp: {self.master_mode}")
@@ -229,25 +232,23 @@ class CW_ReservationManager:
             # 입력란 클릭 후 '개선' 입력 및 엔터
             pyautogui.hotkey('ctrl', 'v')
             self.logger.info(f"Step {step_num}: Search term pasted from clipboard.")
-            time.sleep(1)
-            
+            time.sleep(0.5)
             pyautogui.press('enter')
             self.logger.info(f"Step {step_num}: 'Enter' key pressed, search initiated.")
-            time.sleep(3)
+            
+            time.sleep(0.5)
             
             PyAutoGuiHelper.perform_double_click(step.pos_deliv_res) # 902,479
             self.logger.info(f"Step {step_num}: '납품예약(개선)' tab clicked at position / pos_deliv_res: {step.pos_deliv_res}.") 
             
-            time.sleep(3)
-            success, message = self.detect_loading(step_num, step)
-            self.logger.debug(f"Step {step_num}: Loading detect_loading result - success: {success}, message: {message}")  
+            success, message =  self.super_loading_manager.wait_for_loading_to_complete()
+            self.logger.debug(f"Step {step_num}: '납품예약' 버튼 클릭 로딩 감지 결과 - success: {success}, message: {message}")
             if not success:
                 if self.master_mode:
-                    self.logger.debug(f"Step {step_num}: Loading detection failed, \n Waiting for 5 seconds before retry...")
-                    time.sleep(15)
+                    self.logger.debug(f"Step {step_num}:[마스터모드 활성화] 로딩 감지 실패, \n 30초 대기 시간 추가...")
+                    time.sleep(30) 
                 else:
-                    return False, message
-            time.sleep(3)
+                    return False, message 
             
             # 새창 로드 검증  - 주(케이씨)
             PyAutoGuiHelper.perform_double_click(step.pos_vali_1) # 485,198
@@ -299,17 +300,15 @@ class CW_ReservationManager:
                 return False, error_message  # 에러를 반환하고 실행 중단
             
             self.logger.info(f"Step {step_num}: 'search_po_num' 시작.")
-            time.sleep(1)
+            time.sleep(0.5)
             
-            # po_no가 존재하므로 프로세스를 계속 진행  
             # po_no 입력
             self.po_no = step.po_no # po 번호를 인스턴스 변수에 저장
             self.logger.debug(f"Step {step_num}: po_no: {self.po_no}")
-            time.sleep(3)
             
             PyAutoGuiHelper.perform_double_click(step.pos_po_no) #684,198
             self.logger.info(f"Step {step_num}: PO number input field clicked at position {step.pos_po_no}.")
-            time.sleep(1)
+            time.sleep(0.5)
             
             pyautogui.typewrite(self.po_no) #684,198
             self.logger.info(f"Step {step_num}: PO number '{self.po_no}' entered successfully.")
@@ -320,19 +319,16 @@ class CW_ReservationManager:
             PyAutoGuiHelper.perform_click(step.pos_search_btn_1) # 1083,255
             self.logger.info(f"Step {step_num}: '납품예약 - 조회' clicked at position {step.pos_search_btn_1}.")
             
-            time.sleep(3)
-            success, message = self.detect_loading(step_num, step)
-            self.logger.debug(f"Step {step_num}: Loading detect_loading result - success: {success}, message: {message}")  
+            success, message =  self.super_loading_manager.wait_for_loading_to_complete()
+            self.logger.debug(f"Step {step_num}: '납품예약' 버튼 클릭 로딩 감지 결과 - success: {success}, message: {message}")
             if not success:
                 if self.master_mode:
-                    self.logger.debug(f"Step {step_num}: Loading detection failed, \n Waiting for 5 seconds before retry...")
-                    time.sleep(15)
+                    self.logger.debug(f"Step {step_num}:[마스터모드 활성화] 로딩 감지 실패, \n 30초 대기 시간 추가...")
+                    time.sleep(30) 
                 else:
-                    return False, message
-            time.sleep(5)
+                    return False, message 
             
             # PO조회 후 테이블 로드 검증 (최대 10번 시도, 각 시도 사이 3초 대기)
-            #! 실행되는지 체크해보기
             if self.loading.wait_for_table_load(step.region_table, image_key="empty_table_image"):
                 print(f"테이블 데이터 로드 성공")
                 self.logger.info(f"Step {step_num}: Table data successfully loaded.")
@@ -343,7 +339,7 @@ class CW_ReservationManager:
                 if self.master_mode:
                     print(f"테이블 데이터 로드 실패")
                     self.logger.error(f"Step {step_num}: Failed to load table data. \n Waiting for 5 seconds before retry...")
-                    time.sleep(5)
+                    time.sleep(10)
                     return True, "load_po_table_data completed successfully."
                 else:
                     print(f"테이블 데이터 로드 실패")
@@ -367,63 +363,58 @@ class CW_ReservationManager:
             PyAutoGuiHelper.perform_click(step.pos_vehicle_info) # 345,751
             self.logger.info(f"Step {step_num}: Clicking '차량입력' at pos_vehicle_info: {step.pos_vehicle_info}.")
             
-            time.sleep(3)
-            success, message = self.detect_loading(step_num, step)
-            self.logger.debug(f"Step {step_num}: Loading detect_loading result - success: {success}, message: {message}")  
+            success, message =  self.super_loading_manager.wait_for_loading_to_complete()
+            self.logger.debug(f"Step {step_num}: '납품예약' 버튼 클릭 로딩 감지 결과 - success: {success}, message: {message}")
             if not success:
                 if self.master_mode:
-                    self.logger.debug(f"Step {step_num}: Loading detection failed, \n Waiting for 5 seconds before retry...")
-                    time.sleep(15)
+                    self.logger.debug(f"Step {step_num}:[마스터모드 활성화] 로딩 감지 실패, \n 30초 대기 시간 추가...")
+                    time.sleep(30) 
                 else:
-                    return False, message
-            time.sleep(5)
+                    return False, message 
             
             # yard선택 687,431
             PyAutoGuiHelper.perform_click(step.pos_deli_Type) # 687,431
             self.logger.info(f"Step {step_num}: Clicking 'YARD 선택' at pos_deli_Type: {step.pos_deli_Type}.")
-            time.sleep(1)
+            
+            time.sleep(0.5)
             
             # 정기 출입차량 관리 713,631
             PyAutoGuiHelper.perform_click(step.pos_reg_vehicle_Manag) # 713,63
             self.logger.info(f"Step {step_num}: Clicking '정기 출입차량 관리' at pos_reg_vehicle_Manag: {step.pos_reg_vehicle_Manag}.")
 
-            time.sleep(3)
-            success, message = self.detect_loading(step_num, step)
-            self.logger.debug(f"Step {step_num}: Loading detect_loading result - success: {success}, message: {message}")  
+            success, message =  self.super_loading_manager.wait_for_loading_to_complete()
+            self.logger.debug(f"Step {step_num}: '납품예약' 버튼 클릭 로딩 감지 결과 - success: {success}, message: {message}")
             if not success:
                 if self.master_mode:
-                    self.logger.debug(f"Step {step_num}: Loading detection failed, \n Waiting for 5 seconds before retry...")
-                    time.sleep(15) 
+                    self.logger.debug(f"Step {step_num}:[마스터모드 활성화] 로딩 감지 실패, \n 30초 대기 시간 추가...")
+                    time.sleep(30) 
                 else:
-                    return False, message  # 로딩 실패 시 반환
-            time.sleep(5)
+                    return False, message 
             
             # 체크박스 체크 708,464
             PyAutoGuiHelper.perform_click(step.pos_checkbox) # 708,464
             self.logger.info(f"Step {step_num}: Clicking '체크박스 체크' at pos_checkbox: {step.pos_checkbox}.")
-            time.sleep(1)
+            time.sleep(0.5)
             
             # 확인 1173,720
             PyAutoGuiHelper.perform_click(step.pos_confirm_btn_1) # 1173,720
             self.logger.info(f"Step {step_num}: Clicking '확인' at pos_confirm_btn_1: {step.pos_confirm_btn_1}.")
-            time.sleep(1)
+            time.sleep(0.5)
             
             # 차량정보 팝업 나가기 확인 1274,794
             PyAutoGuiHelper.perform_click(step.pos_confirm_btn_2) # 1274,794
             self.logger.info(f"Step {step_num}: Clicking '[차량정보 팝업]확인' at pos_confirm_btn_2: {step.pos_confirm_btn_2}.")
             
             # 팝업뜸 대기
-            time.sleep(3)
-            success, message = self.detect_loading(step_num, step)
-            self.logger.debug(f"Step {step_num}: Loading detect_loading result - success: {success}, message: {message}")  
+            success, message =  self.super_loading_manager.wait_for_loading_to_complete()
+            self.logger.debug(f"Step {step_num}: '납품예약' 버튼 클릭 로딩 감지 결과 - success: {success}, message: {message}")
             if not success:
                 if self.master_mode:
-                    self.logger.debug(f"Step {step_num}: Loading detection failed, \n Waiting for 5 seconds before retry...")
-                    time.sleep(15) 
+                    self.logger.debug(f"Step {step_num}:[마스터모드 활성화] 로딩 감지 실패, \n 30초 대기 시간 추가...")
+                    time.sleep(30) 
                 else:
-                    return False, message  # 로딩 실패 시 반환
-            time.sleep(5)
-            
+                    return False, message 
+                
             #info 팝업 나가기 '닫기' 1426,870
             PyAutoGuiHelper.perform_click(step.pos_infopop_close_btn) # 1426,870
             self.logger.info(f"Step {step_num}: Clicking 'Info 팝업 닫기' at pos_infopop_close_btn: {step.pos_infopop_close_btn}.")
@@ -454,49 +445,54 @@ class CW_ReservationManager:
             PyAutoGuiHelper.perform_click(step.pos_excel_save) # 1426,870
             self.logger.info(f"Step {step_num}: Clicking '엑셀 다운로드' at pos_excel_save: {step.pos_excel_save}.")
             
-            # 대기 시간 
-            time.sleep(5)
+            success, message =  self.super_loading_manager.wait_for_loading_to_complete()
+            self.logger.debug(f"Step {step_num}: '납품예약' 버튼 클릭 로딩 감지 결과 - success: {success}, message: {message}")
+            if not success:
+                if self.master_mode:
+                    self.logger.debug(f"Step {step_num}:[마스터모드 활성화] 로딩 감지 실패, \n 30초 대기 시간 추가...")
+                    time.sleep(30) 
+                else:
+                    return False, message 
             
             #일반납품예약
             file_directory = PathHelper.get_abs_path('reports','일반납품예약')
             filename = PyAutoGuiHelper.generate_filename('일반 납품예약','.xlsx')
             self.logger.debug(f"Step {step_num}: Generated filename is {filename}.")
-            time.sleep(1)
+            time.sleep(0.5)
             
             self.filepath = os.path.join(file_directory, filename)
             self.logger.info(f"Step {step_num}: File path constructed: {self.filepath}.")
             
-            time.sleep(1)
+            time.sleep(0.5)
             PyAutoGuiHelper.save_file_with_name(self.filepath)
             self.logger.info(f"Step {step_num}: Excel file saved successfully as {self.filepath}.")
             
-            # 파일 저장중....
-            time.sleep(5)    
-            self.logger.debug(f"Step {step_num}: Waiting for 5 seconds after saving file.")
+            time.sleep(1)
             
-            # 파일 존재 확인
-            success, message =  self.check_excel_exists(step_num)
+            # 파일 존재 확인, 재시도 로직 추가
+            success, message =  self.check_excel_exists(step_num, self.file_path, max_attempts=5)
+            self.logger.info(f"Step {step_num}: {message}")
             if not success:
-                return False, message
+                return False, "File not found after saving attempt."
             
             return True, "save_and_verify_excel' completed successfully." 
-            
+
         except Exception as e:
             error_message = f"Step {step_num}: save_and_verify_excel failed: {str(e)}"
             self.logger.error(error_message)
             return False, error_message
         
-    def check_excel_exists(self, step_num):
+    def check_excel_exists(self, step_num, file_path, max_attempts=5):
         try:
-            time.sleep(3)
-            self.logger.info(f"Step {step_num}: Starting 'check_excel_exists'.")
-            
-            if not os.path.exists(self.filepath):
-                time.sleep(1) 
-                self.logger.error(f"Step {step_num}: Excel file not found at: {self.filepath}")
-                return False, f"Excel file not found at: {self.filepath}"
-
-            return True, "Excel file exists."
+            """ 파일이 존재하는지 재시도 하며 확인 """
+            attempts = 0
+            while attempts < max_attempts:
+                if os.path.exists(file_path):
+                    return True, "File found"
+                else:
+                    time.sleep(3)
+                    attempts += 1
+            return False, "File not found after multiple attempts"
 
         except Exception as e:
             error_message = f"Step {step_num}: check_excel_exists failed: {str(e)}"
@@ -511,7 +507,7 @@ class CW_ReservationManager:
             self.logger.info(f"Step {step_num}: Starting 'find_matching_rows'.")
             
             df = pd.read_excel(self.filepath, engine='openpyxl', sheet_name=0, header=0)
-            time.sleep(1)
+            time.sleep(0.5)
             
             # JSON 데이터로부터 열 인덱스와 po_data_list를 받음
             read_columns = step.read_columns  # [0, 3, 12] 
@@ -530,7 +526,6 @@ class CW_ReservationManager:
             #? 열 데이터 추출후 납품예약불가사유가 없는 데이터 필터링
             part_po_idx = read_columns[0]
             cause_idx = read_columns[1]
-            material_code_idx = read_columns[2]
             reserv_num_idx = 10
             
             # P/O품번, 납품예약불가사유 열 데이터 선택 (pandas.Series 객체 타입)
@@ -565,23 +560,15 @@ class CW_ReservationManager:
             # )
             # # 조건을 만족하는 P/O품번 추출
             # excel_data = part_po_row[condition & reserv_condition]
+            
     
             # 두 조건을 모두 충족하는 품번 데이터 추출
             Extracted_data = part_po_row[combined_condition] # excel data: 인덱스 품번
             self.logger.debug(f"납품예약불가사유, 납품예약번호가 없는 데이터 추출: \n {Extracted_data}")
+            
             # 중복된 품번 제거 (인덱스가 낮은 첫 번째 p/o 번호만 남김)
             Extracted_data_unique = Extracted_data.drop_duplicates(keep='first')
             self.logger.debug(f"추출된 데이터 중, 차수(인덱스)가 낮은 데이터 추출(중복X): \n {Extracted_data_unique}")            
-            
-            # # # 추출한 데이터 문자열 변환후 공백 제거
-            # # #filtered_data: 키는 엑셀 데이터의 인덱스, 값은 p/o품번 문자열
-            # # filtered_data = excel_data.str.strip()
-            # # self.logger.debug(f"Step {step_num}: Extracted data: \n{filtered_data}")
-            # #수정!!!!!
-            # #중복된 P/O품번이 있을때 차수가 낮은 데이터만 체크 (단, 납품예약이 가능한 상태일때만)
-            # # 중복된 값의 첫 번째 항목을 제외한 나머지 항목을 중복으로 인식하고, 이를 제거하여 가장 낮은 인덱스의 항목만 남김
-            # filtered_data = filtered_data[~filtered_data.duplicated(keep='first')]
-            # self.logger.debug(f"Step {step_num}: Extracted data with duplicates removed: \n{filtered_data}")
             
             #? JSON 데이터 (P/O품번, 자재번호, BOM수량)
             po_data_list =  step.po_data_list
@@ -639,8 +626,6 @@ class CW_ReservationManager:
             self.logger.info(f"Step {step_num}: Moved to start position at {step.pos_start}.")
             
             current_index = 0
-            time.sleep(1)
-            
             for result in self.results:
                 # results 튜플에서 추출
                 index, _, bom_quantity = result
@@ -652,7 +637,7 @@ class CW_ReservationManager:
                 # 인덱스로 이동
                 PyAutoGuiHelper.move_to_index(current_index, target_index)
                 self.logger.info(f"Step {step_num}: Moving from index {current_index} to {target_index}.")
-                time.sleep(1)
+                time.sleep(0.5)
                 
                 # 현재 셀 값 복사
                 pyautogui.hotkey('ctrl','c')
@@ -669,22 +654,22 @@ class CW_ReservationManager:
                 else:
                     # 활성화 상태로 간주하고 수량 입력
                     pyautogui.hotkey('ctrl','a')
-                    time.sleep(1)
+                    time.sleep(0.5)
                     pyautogui.write(bom_quantity)
                     self.logger.info(f"Step {step_num}: Bom quantity [{bom_quantity}] input at index {target_index}.")
                     
                 # 체크박스 체크
                 pyautogui.hotkey('shift', 'tab')
-                time.sleep(1)
+                time.sleep(0.5)
                 pyautogui.press('space')
                 self.logger.info(f"Step {step_num}: Checkbox checked at index {target_index}.")
                 
                 # 수량입력으로 다시 이동
                 pyautogui.press('right', presses=22)
-                time.sleep(1)
+                time.sleep(0.5)
                 
                 current_index = target_index
-                time.sleep(1)
+                time.sleep(0.5)
                 
             self.logger.info(f"Step {step_num}: Action performed on all matching rows successfully.")
             return True, "Action performed on all matching rows successfully."
@@ -698,16 +683,22 @@ class CW_ReservationManager:
     
     def reserve_delivery(self, step_num:int, step:Step):
         try:
-            time.sleep(5)   
+            time.sleep(3)   
             self.logger.info(f"Step {step_num}: Starting 'reserve_delivery'.") 
 
             # 납품예약 버튼 클릭
             PyAutoGuiHelper.perform_click(step.pos_deli_reserv_btn) # 1426,870
             self.logger.info(f"Step {step_num}: Clicking '납품예약' button at pos_deli_reserv_btn: {step.pos_deli_reserv_btn}.")
 
-            #? 대기 예상
-            time.sleep(5)
-            
+            success, message =  self.super_loading_manager.wait_for_loading_to_complete()
+            self.logger.debug(f"Step {step_num}: '납품예약' 버튼 클릭 로딩 감지 결과 - success: {success}, message: {message}")
+            if not success:
+                if self.master_mode:
+                    self.logger.debug(f"Step {step_num}:[마스터모드 활성화] 로딩 감지 실패, \n 30초 대기 시간 추가...")
+                    time.sleep(30) 
+                else:
+                    return False, message 
+
             success_texts = ["거래명세서를", "발행하시겠습니까?"]
             
             success, detected_text = PopupManager.process_popup(
@@ -715,7 +706,6 @@ class CW_ReservationManager:
                 'generate_invoice'
             )
             
-            time.sleep(1)
             
             if success:
                 self.logger.debug(f"Step {step_num}: process '납품예약' popup result - success: {success}, detected_text: {detected_text}")   
@@ -725,43 +715,36 @@ class CW_ReservationManager:
                 self.logger.debug(f"Step {step_num}: Failed to process popup. Last detected text: '{detected_text.strip()}'.")
                 return False, f"Failed to process '납품예약'popup. Last detected text: '{detected_text.strip()}'."
 
-            time.sleep(3)
-            success, message = self.detect_loading(step_num, step)
-            self.logger.debug(f"Step {step_num}: Loading detect_loading result - success: {success}, message: {message}")  
+            success, message =  self.super_loading_manager.wait_for_loading_to_complete()
+            self.logger.debug(f"Step {step_num}: '납품예약' 버튼 클릭 로딩 감지 결과 - success: {success}, message: {message}")
             if not success:
                 if self.master_mode:
-                    self.logger.debug(f"Step {step_num}: Loading detection failed, \n Waiting for 5 seconds before retry...")
-                    time.sleep(5) 
+                    self.logger.debug(f"Step {step_num}:[마스터모드 활성화] 로딩 감지 실패, \n 30초 대기 시간 추가...")
+                    time.sleep(30) 
                 else:
-                    return False, message  # 로딩 실패 시 반환
-            time.sleep(10)
-            
+                    return False, message 
+
             # 체크박스 모두 체크
             PyAutoGuiHelper.perform_click(step.pos_all_checkbox) # 1426,870
             self.logger.info(f"Step {step_num}: Clicking '체크박스 클릭' at pos_all_checkbox: {step.pos_all_checkbox}.")
-            time.sleep(1)
+            time.sleep(0.5)
             
             # 자재TAG 클릭
             PyAutoGuiHelper.perform_click(step.pos_tag) # 1426,870
             self.logger.info(f"Step {step_num}: Clicking '자재TAG' button at pos_tag: {step.pos_tag}.")
             
-            time.sleep(5)
-            success, message = self.detect_loading(step_num, step)
-            self.logger.debug(f"Step {step_num}: Loading detect_loading result - success: {success}, message: {message}")  
+            success, message =  self.super_loading_manager.wait_for_loading_to_complete()
+            self.logger.debug(f"Step {step_num}: '납품예약' 버튼 클릭 로딩 감지 결과 - success: {success}, message: {message}")
             if not success:
                 if self.master_mode:
-                    self.logger.debug(f"Step {step_num}: Loading detection failed, \n Waiting for 20 seconds before retry...")
-                    time.sleep(20)
+                    self.logger.debug(f"Step {step_num}:[마스터모드 활성화] 로딩 감지 실패, \n 30초 대기 시간 추가...")
+                    time.sleep(30) 
                 else:
-                    return False, message
-            time.sleep(10)
+                    return False, message 
             
             # 닫기 클릭
             PyAutoGuiHelper.perform_click(step.pos_popup_close_btn_2) # 1426,870
             self.logger.info(f"Step {step_num}: Clicking '팝업 닫기' button at pos_popup_close_btn_2: {step.pos_popup_close_btn_2}.")
-            
-            time.sleep(5)
-            
             
             self.logger.info(f"Step {step_num}: reserve_delivery' completed successfully.")
             return True, "reserve_delivery' completed successfully." 
@@ -782,23 +765,28 @@ class CW_ReservationManager:
             PyAutoGuiHelper.perform_click(step.pos_trns_btn) # 1426,870
             self.logger.info(f"Step {step_num}: Clicking '거래명세서출력' button at pos_trns_btn: {step.pos_trns_btn}.")
             
-            time.sleep(5)
-            success, message = self.detect_loading(step_num, step)
-            self.logger.debug(f"Step {step_num}: Loading detect_loading result - success: {success}, message: {message}")  
+            success, message =  self.super_loading_manager.wait_for_loading_to_complete()
+            self.logger.debug(f"Step {step_num}: '납품예약' 버튼 클릭 로딩 감지 결과 - success: {success}, message: {message}")
             if not success:
                 if self.master_mode:
-                    self.logger.debug(f"Step {step_num}: Loading detection failed, \n Waiting for 20 seconds before retry...")
-                    time.sleep(20)
+                    self.logger.debug(f"Step {step_num}:[마스터모드 활성화] 로딩 감지 실패, \n 30초 대기 시간 추가...")
+                    time.sleep(30) 
                 else:
-                    return False, message
-            time.sleep(10)
-            
+                    return False, message 
+
             # 프린트 아이콘 클릭
             PyAutoGuiHelper.perform_click(step.pos_trns_print_icon) # 1426,870
             self.logger.info(f"Step {step_num}: Clicking '프린트 아이콘' at pos_trns_print_icon: {step.pos_trns_print_icon}.")
             
             # 대기
-            time.sleep(5)
+            success, message =  self.super_loading_manager.wait_for_loading_to_complete()
+            self.logger.debug(f"Step {step_num}: '납품예약' 버튼 클릭 로딩 감지 결과 - success: {success}, message: {message}")
+            if not success:
+                if self.master_mode:
+                    self.logger.debug(f"Step {step_num}:[마스터모드 활성화] 로딩 감지 실패, \n 30초 대기 시간 추가...")
+                    time.sleep(30) 
+                else:
+                    return False, message 
             
             # 전체페이지 프린트 확인 클릭
             PyAutoGuiHelper.perform_click(step.pos_trns_confirm_btn_1) # 1426,870
@@ -811,12 +799,12 @@ class CW_ReservationManager:
             PyAutoGuiHelper.perform_click(step.pos_trns_close_btn) # 1426,870
             self.logger.info(f"Step {step_num}: Clicking '팝업 닫기'button at pos_trns_close_btn: {step.pos_trns_close_btn}.")
             
-            time.sleep(3)
+            time.sleep(0.5)
             
             # 확인 클릭
             PyAutoGuiHelper.perform_click(step.pos_trns_confirm_btn_2) # 1426,870
             self.logger.info(f"Step {step_num}: Clicking '팝업 닫기'button at pos_trns_confirm_btn_2: {step.pos_trns_confirm_btn_2}.")
-            time.sleep(1)
+            time.sleep(0.5)
             
             self.logger.info(f"Step {step_num}: 'print_invoice' completed successfully.")
             return True, "print_invoice completed successfully."
@@ -836,24 +824,22 @@ class CW_ReservationManager:
             # 현재 창 포커스
             pyautogui.click(step.pos_window_focus)
             self.logger.info(f"Step {step_num}: Clicking 'pos_window_focus' input at position {step.pos_window_focus}. / pos_window_focus: {step.pos_window_focus}")
-            time.sleep(1)
             
             # 현재 창 닫기
             for i in range(2):
                 self.logger.debug(f"Step {step_num}: Pressing 'alt + x' to close all windows. (Attempt {i+1})")
-                pyautogui.hotkey('alt','x', interval=1)
+                pyautogui.hotkey('alt','x', interval=0.5)
                 
             self.logger.info(f"Step {step_num}: Finished pressing 'alt + x' {i+1} times.")
 
-            time.sleep(1)
+            time.sleep(0.5)
             
             # 상위 메뉴 탭 모두 닫기
             PyAutoGuiHelper.perform_click(step.pos_menu_tab) # 214,95
             self.logger.info(f"Step {step_num}: Moving to '모든 메뉴 탭 닫기' menu at {step.pos_menu_tab}.")
 
             self.logger.info(f"Step {step_num}: 'reset_for_po_number_search' completed successfully.")
-            time.sleep(1)
-            
+
             return True, "reset_for_po_number_search completed successfully."
             
         except Exception as e:
@@ -895,10 +881,12 @@ def execute_cw_delv_inv(json_data: str):
     master_mode = PathHelper.get_config_value('master_mode',False)
     logger = LoggerManager.get_logger(__name__)
     loading = LoadingIconManager()
+    super_loading_manager = SuperLoadingManager()
     res = ResponseManager()
 
     step_num = 0  # 초기화    
-    manager = CW_ReservationManager(json_data, res, logger, loading, master_mode) 
+    manager = CW_ReservationManager(json_data, res, logger, super_loading_manager, loading, master_mode) 
+    
     try: 
         total_steps = len(manager.contexts.__annotations__) # Contexts 클래스의 모든 스텝 필드를 카운트
         for step_num in range(1, total_steps + 1):
