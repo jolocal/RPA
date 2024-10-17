@@ -23,11 +23,15 @@ root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__),'../../'))
 sys.path.append(root_dir)
 
 # 절대 경로를 사용하여 모듈을 불러옴
-from common.loading_manager import LoadingIconManager
 from common.logger_manager import LoggerManager
 from common.response_manager import ResponseManager
+
+from common.loading_manager import LoadingIconManager
+from common.loading_icon_manager import SuperLoadingManager
+
 from common.utils.helper import PyAutoGuiHelper
 from common.utils.path_utils import PathHelper
+
 from common.ocr_popup_manager import PopupManager
 
 @dataclass
@@ -95,7 +99,7 @@ class Contexts:
     step_10: Step
 
 class CW_ReqDueManager:
-    def __init__(self, json_data:str, res, logger, loading, master_mode:bool = False):
+    def __init__(self, json_data: str, res, logger, super_loading_manager, loading, master_mode:bool = False):
         # JSON 문자열에서 백슬래시 문자를 두 번으로 바꿉니다.
         json_data = json_data.replace('\\', '\\\\')
         self.data = json.loads(json_data, encoding='utf-8')
@@ -104,17 +108,24 @@ class CW_ReqDueManager:
         logger.info("Received JSON data:")
         logger.info(json.dumps(self.data, indent=4, ensure_ascii=False))  # 보기 좋게 출력, ensure_ascii=False로 한글이 깨지지 않도록
         
-        self.res = res
         self.logger = logger
+        self.res = res
+        
         self.loading = loading
+        self.super_loading_manager = super_loading_manager
+        
+        self.master_mode = master_mode
+        print(f"master_mode in StartApp: {self.master_mode}")
+        logger.debug(f"master_mode in StartApp: {self.master_mode}")
         
         self.po_no = None
         self.filepath = ""
         self.matches = None 
         
-        self.master_mode = master_mode
-        print(f"master_mode in StartApp: {self.master_mode}")
-        logger.debug(f"master_mode in StartApp: {self.master_mode}")
+        #! 초기화 이후 모니터링 시작
+        self.stop_signal = False  # stop_signal 초기화
+        self.terminated = False 
+        self.start_input_monitoring() # 키 입력 감지 시작
         
         # JSON 데이터를 Contexts 객체로 변환
         self.contexts = Contexts(
@@ -129,7 +140,45 @@ class CW_ReqDueManager:
             step_9 = Step(**self.data['contexts']['step_9']),
             step_10 = Step(**self.data['contexts']['step_10'])
         )
+
+    #TODO#################################################강제종료################################################
+    
+    def start_input_monitoring(self):
+        """ 비동기 키 입력 감지 스레드 시작 """
+        input_thread = threading.Thread(target=self.monitor_key_input, daemon = True)
+        input_thread.start()
         
+    def monitor_key_input(self):
+        """ 키 입력을 감지하여 특정 키 입력 시 강제 종료 """
+        self.logger.debug(f"모니터링 시작: 특정 키('q') 입력시 강제 종료합니다.")
+        keyboard.add_hotkey('shift+q', self.force_terminate)
+        
+        # 스레드가 종료될 때까지 무한 대기, 대기 중에 종료 신호가 있으면 루프 종료
+        while not self.stop_signal:
+            time.sleep(0.1) # CPU 점유율을 낮추기 위해 짧은 대기
+    
+    def force_terminate(self):
+        """ 강제 종료를 처리하는 메서드 """
+        self.logger.info("사용자가 'Shift + Q' 키를 입력하여 프로세스를 강제 종료합니다.")
+        print("사용자가 'Shift + Q' 키를 입력하여 프로세스를 강제 종료합니다.")
+        
+        self.stop_signal = True # 스레드 종료를 위해 stop_signal을 True로 설정
+        self.terminated = True  # 종료 신호 설정
+        
+        # 응답을 준비하여 LabVIEW에 보내기
+        self.res.add_contexts(0, "force_terminate", "exit", "Process terminated by user input (Shift + Q).")
+        response = self.res.to_json()  # 응답을 호출한 곳에 반환하여 LabVIEW로 전송
+        print(f"{response}")
+        # 응답 반환 후 메인 스레드에서 직접 종료 실행
+        os._exit(0)  # 프로그램을 강제로 종료
+        #? 랩뷰로 전송 가는지 체크 (아마 안갈거임)
+        return response  # 응답을 반환하여 LabVIEW로 전송
+    
+    def stop(self):
+        # 프로그램 종료 시 호출되는 메서드
+        self.stop_signal = True  # 스레드 종료를 위한 신호 설정
+    
+    #TODO#############################################################################################################
     
     def execute_task(self, step_num, step:Step):
         task_map = {
@@ -165,7 +214,6 @@ class CW_ReqDueManager:
         
         return None  # 성공적으로 실행된 경우 None 반환
 
-        
     #TODO################################################# STEP_1 ######################################################
     
     def navigate_to_deliv_reserv_improv(self, step_num, step:Step):
@@ -258,15 +306,14 @@ class CW_ReqDueManager:
                 return False, error_message  # 에러를 반환하고 실행 중단
             
             self.logger.info(f"Step {step_num}: 'search_po_num' 시작.")
-            time.sleep(1)
+            time.sleep(0.5)
                     
             # po_no가 존재하므로 프로세스를 계속 진행
             self.po_no = step.po_no # po 번호를 인스턴스 변수에 저장
-            time.sleep(3)
+            time.sleep(0.5)
             
             PyAutoGuiHelper.perform_double_click(step.pos_po_no) #684,198
             self.logger.info(f"Step {step_num}: PO number input field clicked at position {step.pos_po_no}.")
-            time.sleep(1)
             
             pyautogui.typewrite(self.po_no) #684,198
             self.logger.info(f"Step {step_num}: PO number '{self.po_no}' entered successfully.")
@@ -423,31 +470,37 @@ class CW_ReqDueManager:
             
             PyAutoGuiHelper.perform_click(step.pos_excel_save)
             self.logger.info(f"Step {step_num}: Save button clicked successfully at position / pos_excel_save: {step.pos_excel_save}.")
-            
-            # 로딩
-            time.sleep(5)
+
+            # 대기
+            success, message =  self.super_loading_manager.wait_for_loading_to_complete()
+            self.logger.debug(f"Step {step_num}: '엑셀 저장' 버튼 클릭 후 로딩 감지 결과 - success: {success}, message: {message}")
+            if not success:
+                if self.master_mode:
+                    self.logger.debug(f"Step {step_num}:[마스터모드 활성화] 로딩 감지 실패, \n 15초 대기 시간 추가...")
+                    time.sleep(15) 
+                else:
+                    return False, message 
                 
             # [파일 디렉토리+파일이름+날짜+시간] 엑셀 저장
             file_directory = PathHelper.get_abs_path('reports','변경납기관리')
             filename = PyAutoGuiHelper.generate_filename("변경납기관리", "xlsx")
             self.logger.debug(f"Step {step_num}: Generated filename is {filename}.")
             
-            time.sleep(1)
+            time.sleep(0.5)
             self.filepath = os.path.join(file_directory, filename)
             self.logger.info(f"Step {step_num}: File path constructed: {self.filepath}.")
             
-            time.sleep(1)
+            time.sleep(0.5)
             PyAutoGuiHelper.save_file_with_name(self.filepath)
             self.logger.info(f"Step {step_num}: Excel file saved successfully as {self.filepath}.")
             
-            # 파일 저장중........
-            time.sleep(5)   
-            self.logger.debug(f"Step {step_num}: Waiting for 3 seconds after saving file.")
-            
+            time.sleep(1)
+
             # 파일 존재 확인
-            success, message = self.check_excel_exists(step_num)
+            success, message = self.check_excel_exists(step_num, self.filepath, max_attempts=5)
+            self.logger.info(f"Step {step_num}: {message}")
             if not success:
-                return False, message
+                return False, "File not found after saving attempt."
             
             return True, f"Excel data saved and read successfully. File path: {self.filepath}"
             
@@ -456,24 +509,22 @@ class CW_ReqDueManager:
             self.logger.error(error_message)
             return False, error_message  # 작업이 실패한 경우 False와 오류 메시지 반환
 
-    def check_excel_exists(self, step_num):
-        try: 
-            time.sleep(3)
-            self.logger.info(f"Step {step_num}: Starting 'check_excel_exists'.")
-            
-            if not os.path.exists(self.filepath):
-                time.sleep(1) 
-                self.logger.error(f"Step {step_num}: Excel file not found at: {self.filepath}")
-                return False, f"Excel file not found at: {self.filepath}"
+    def check_excel_exists(self, step_num, file_path, max_attempts=5):
+        try:
+            """ 파일이 존재하는지 재시도 하며 확인 """
+            attempts = 0
+            while attempts < max_attempts:
+                if os.path.exists(file_path):
+                    return True, "File found"
+                else:
+                    time.sleep(3)
+                    attempts += 1
+            return False, "File not found after multiple attempts"
 
-            self.logger.info(f"Step {step_num}: Excel file confirmed to exist at: {self.filepath}.")
-            
-            return True, "Excel file exists."
-        
         except Exception as e:
             error_message = f"Step {step_num}: check_excel_exists failed: {str(e)}"
             self.logger.error(error_message)
-            return False, error_message  # 작업이 실패한 경우 False와 오류 메시지 반환
+            return False, error_message
 
     #TODO################################################# STEP_5 ######################################################
     
@@ -491,7 +542,11 @@ class CW_ReqDueManager:
             
             #? 데이터 정규화 및 검증
             # 1. 양쪽 공백 제거
-            json_po_list = [ item.strip() for item in json_po_list ]
+            # json_po_list = [ item.strip() for item in json_po_list ]
+            # self.logger.debug(f"Step {step_num}: json_list (P/O품번) : {json_po_list}")
+            
+            #? 수정1:
+            json_po_list = [str(item).strip() for item in json_po_list]
             self.logger.debug(f"Step {step_num}: json_list (P/O품번) : {json_po_list}")
             
             time.sleep(1)
@@ -501,20 +556,25 @@ class CW_ReqDueManager:
             self.logger.debug(f"Step {step_num}: excel 'P/O품번' index {step.read_column} list : {excel_po_list}")
             
             # 일치하는 데이터와 그 인덱스 찾기
-            #? excel_po_list의 각 항목이 json_po_list에 있는지 확인하며, 인덱스와 값을 튜플로 저장함
-            #? json_po_list에 중복된 값이 있어도 excel_po_list의 항목이 json_po_list에 있는지만 확인하기 때문에, JSON 리스트의 중복은 매칭에 영향을 주지 않음.
-            #? 즉 JSON리스트의 중복된 항목 수와 상관없이 Excel 값이 json_po_list에 포함되는지만 따짐
-            matches = [(index, value) for index, value in enumerate(excel_po_list) if value in json_po_list ]
+            # matches = [(index, value) for index, value in enumerate(excel_po_list) if value in json_po_list ]
+            
+            #? 수정2:
+            matches = [(index, value) for index, value in excel_po_list if str(value) in json_po_list]
             
             if not matches:
                 self.logger.warning(f"Step {step_num}: No matching items found in column '{step.read_column}'.")
                 return False, f"Step {step_num}: No matching items found in column '{step.read_column}'."
+            
+            #? 수정요청: 중복된 품번 제거 (인덱스가 높은 마지막 p/o 번호만 남김)
+            df_matches = pd.DataFrame(matches, columns=['index', 'value'])
+            unique_matches = df_matches.drop_duplicates(subset='value', keep='last')
+            final_matches = list(unique_matches.itertuples(index=False, name=None))
 
-            self.logger.info(f"Step {step_num}: Found {len(matches)} matching items: {matches}")
-            self.matches = matches # 튜플들의 리스트 형태 matches = [(index_1, value_1), (index_2, value_2), (index_3, value_3), ...]
-            
-            return True, f"'find_matching_rows' completed successfully. Found {len(matches)} matching rows."
-            
+            self.logger.info(f"Step {step_num}: Found {len(final_matches)} unique matching items: {final_matches}")
+            self.matches = final_matches
+
+            return True, f"'find_matching_rows' completed successfully. Found {len(final_matches)} unique matching rows."
+
         except Exception as e:
             error_message = f"Step {step_num}: find_matching_rows failed: {str(e)}"
             self.logger.error(error_message)
@@ -634,9 +694,7 @@ class CW_ReqDueManager:
             pyautogui.press('enter')
             time.sleep(1)
             
-            
             success_texts = ["반영","되었습니다."] # 일괄입력 단어 실패 팝업창에도 나타남.
-            
             success, detected_text = PopupManager.process_popup(
                 success_texts,
                 'batch_input', # popup_type
@@ -663,6 +721,16 @@ class CW_ReqDueManager:
                     return False, message
             time.sleep(3)
             
+            # 대기
+            success, message =  self.super_loading_manager.wait_for_loading_to_complete()
+            self.logger.debug(f"Step {step_num}: '일괄입력 반영 되었습니다' 팝업 후 로딩 감지 결과 - success: {success}, message: {message}")
+            if not success:
+                if self.master_mode:
+                    self.logger.debug(f"Step {step_num}:[마스터모드 활성화] 로딩 감지 실패, \n 30초 대기 시간 추가...")
+                    time.sleep(30) 
+                else:
+                    return False, message 
+            
             self.logger.info(f"Step {step_num}: Negotiation date input and bulk input click completed successfully.")
             return True, "Negotiation date input and bulk input click completed successfully."
             
@@ -687,7 +755,6 @@ class CW_ReqDueManager:
 
             # search_str을 유니코드에서 UTF-8로 처리하여 한글 입력
             comment_str = "물품 입고 예정"
-            # 클립보드에 comment_str 복사
             pyperclip.copy(comment_str)
             self.logger.info(f"Step {step_num}: Search term '{comment_str}'/'{step.comment_str}' copied to clipboard.")
             time.sleep(3)
@@ -698,12 +765,11 @@ class CW_ReqDueManager:
             
             pyautogui.press('enter')
             self.logger.info(f"Step {step_num}: 'Enter' key pressed, search initiated.")
-            time.sleep(3)
+            time.sleep(1)
 
             # 선택복사 버튼 클릭
             PyAutoGuiHelper.perform_click(step.pos_copy_select_btn)
-            time.sleep(1)
-            
+
             self.logger.info(f"Step {step_num}: Clicking '선택복사' btn at position {step.pos_copy_select_btn}. / pos_copy_select_btn: {step.pos_copy_select_btn}")
             return True, "input_incoming_goods_info completed successfully."
         
@@ -753,7 +819,6 @@ class CW_ReqDueManager:
             # 현재 창 포커스
             pyautogui.click(step.pos_window_focus)
             self.logger.info(f"Step {step_num}: Clicking 'pos_window_focus' input at position {step.pos_window_focus}. / pos_window_focus: {step.pos_window_focus}")
-            time.sleep(1)
             
             # 현재 창 닫기
             for i in range(2):
@@ -762,15 +827,13 @@ class CW_ReqDueManager:
                 
             self.logger.info(f"Step {step_num}: Finished pressing 'alt + x' {i+1} times.")
 
-            time.sleep(1)
+            time.sleep(0.5)
             
             # 상위 메뉴 탭 모두 닫기
             PyAutoGuiHelper.perform_click(step.pos_menu_tab) # 214,95
             self.logger.info(f"Step {step_num}: Moving to '모든 메뉴 탭 닫기' menu at {step.pos_menu_tab}.")
-
-            self.logger.info(f"Step {step_num}: 'reset_for_po_number_search' completed successfully.")
-            time.sleep(1)
             
+            self.logger.info(f"Step {step_num}: 'reset_for_po_number_search' completed successfully.")
             return True, "reset_for_po_number_search completed successfully."
             
         except Exception as e:
@@ -809,19 +872,26 @@ def execute_cw_req_due(json_data:str):
     PathHelper.load_config()
     master_mode =  PathHelper.get_config_value('master_mode',False)
     
+    master_mode = PathHelper.get_config_value('master_mode',False)
     logger = LoggerManager.get_logger(__name__)
-    loading= LoadingIconManager()
+    loading = LoadingIconManager()
+    super_loading_manager = SuperLoadingManager()
     res = ResponseManager()
     
     step_num = 0 # 초기화
-    manager = CW_ReqDueManager(json_data, res, logger, loading, master_mode)    
+    manager = CW_ReqDueManager(json_data, res, logger, super_loading_manager, loading, master_mode) 
     
     try: 
-        
         total_steps = len(manager.contexts.__annotations__) # Contexts 클래스의 모든 스텝 필드를 카운트
         for step_num in range(1, total_steps + 1):
             step = getattr(manager.contexts, f'step_{step_num}')
             result = manager.execute_task(step_num, step)
+            
+            # 종료 신호가 설정되었는지 확인
+            if manager.terminated:
+                logger.info("Terminated by user input.")
+                print("Terminated by user input.")
+                return manager.force_terminate()
             
             if result is not None: # 실패 메시지이면
                 logger.error(f"Error occurred at step {step_num}: {res.to_json()}")

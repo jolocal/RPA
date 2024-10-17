@@ -6,10 +6,7 @@ import json
 import time
 import pyperclip
 import traceback
-<<<<<<< HEAD
-=======
-import pytesseract
->>>>>>> 17c65f4bd86bb6adbb6bb249df210dc8f0aca344
+
 from PIL import Image
 import cv2
 import numpy as np
@@ -19,7 +16,6 @@ import threading
 import keyboard
 
 from datetime import datetime  # 날짜와 시간 모듈 추가
-
 
 from dataclasses import dataclass, field
 from typing import List, Tuple, Optional
@@ -34,12 +30,14 @@ sys.path.append(root_dir)
 # 절대 경로를 사용하여 모듈을 불러옴
 from common.logger_manager import LoggerManager
 from common.response_manager import ResponseManager
-from common.popup_manager import PopupManager
+
 from common.loading_manager import LoadingIconManager
 from common.loading_icon_manager import SuperLoadingManager
+
 from common.utils.helper import PyAutoGuiHelper
 from common.utils.path_utils import PathHelper
 
+from common.popup_manager import PopupManager
 from common.popup_handling_manager import PopupManager
 from common.ocr_popup_large_manager import PopupManager
 
@@ -136,7 +134,7 @@ class Contexts:
     step_8: Step
 
 class HN_ReservationManager:
-    def __init__(self, json_data: str, res, logger, loading, master_mode:bool = False):
+    def __init__(self, json_data: str, res, logger, super_loading_manager, loading, master_mode:bool = False):
         # JSON 문자열에서 백슬래시 문자를 두 번으로 바꿉니다.
         json_data = json_data.replace('\\', '\\\\')
         self.data = json.loads(json_data)
@@ -146,12 +144,16 @@ class HN_ReservationManager:
 
         self.logger = logger
         self.res = res
+        
         self.loading = loading
+        self.super_loading_manager = super_loading_manager
+        
         self.master_mode = master_mode
         print(f"master_mode in StartApp: {self.master_mode}")
         logger.debug(f"master_mode in StartApp: {self.master_mode}")
         
         self.filepath = ""
+        self.po_no = ""
         self.matches = None  # matches를 초기화
         self.total_count = None
         self.index_value_pairs = []
@@ -330,6 +332,7 @@ class HN_ReservationManager:
             
             time.sleep(3)   
             pyautogui.typewrite(step.po_no)
+            self.po_no = step.po_no
             self.logger.info(f"Step {step_num}: PO number '{step.po_no}' entered successfully.")
             
             # 진행상태 체크
@@ -379,7 +382,7 @@ class HN_ReservationManager:
             self.save_excel_with_index(step_num, step)
             
             # 엑셀 존재 여부 체크
-            self.check_excel_exists(step_num)
+            self.check_excel_exists(step_num, file_path=self.filepath)
 
             # JSON 자재코드와 엑셀 비교
             self.matches = self.compare_with_json(step_num, step)
@@ -407,14 +410,18 @@ class HN_ReservationManager:
             # 엑셀 아이콘 클릭 및 저장
             PyAutoGuiHelper.perform_click(step.pos_excel)
             self.logger.info(f"Step {step_num}: Excel icon clicked successfully at position {step.pos_excel}.")
-            
-            time.sleep(3)
 
             PyAutoGuiHelper.perform_click(step.pos_save_btn)
             self.logger.info(f"Step {step_num}: Save button clicked successfully at position {step.pos_save_btn}.")
             
-            # 로딩
-            time.sleep(5)
+            success, message =  self.super_loading_manager.wait_for_loading_to_complete()
+            self.logger.debug(f"Step {step_num}: '엑셀' 아이콘 클릭 로딩 감지 결과 - success: {success}, message: {message}")
+            if not success:
+                if self.master_mode:
+                    self.logger.debug(f"Step {step_num}:[마스터모드 활성화] 로딩 감지 실패, \n 30초 대기 시간 추가...")
+                    time.sleep(30) 
+                else:
+                    return False, message 
             
             # 파일 디렉토리 + 파일이름 + .xlsx   
             file_directory = PathHelper.get_abs_path('reports','직납직사급')
@@ -422,37 +429,45 @@ class HN_ReservationManager:
             self.logger.debug(f"Step {step_num}: Generated filename is {filename}.")
             
             time.sleep(1)   
+
             self.filepath = os.path.join(file_directory, filename)
             self.logger.info(f"Step {step_num}: File path constructed: {self.filepath}.")
             
-            time.sleep(1) 
+            time.sleep(0.5) 
             PyAutoGuiHelper.save_file_with_name(self.filepath)
+            self.logger.info(f"Step {step_num}: Excel file saved successfully as {self.filepath}.")
             
-            # 파일 저장중........
-            time.sleep(5) # 파일 저장 후, 파일 시스템이 저장을 마칠 시간 주기
+            time.sleep(1)
             
-            self.logger.info(f"Step {step_num}: Excel file saved successfully as {filename}.")
-        
+            # 파일 존재 확인, 재시도 로직 추가
+            success, message =  self.check_excel_exists(step_num, file_path=self.filepath, max_attempts=5)
+            self.logger.info(f"Step {step_num}: {message}")
+            if not success:
+                return False, "File not found after saving attempt."
+            
+            return True, "save_and_verify_excel' completed successfully." 
+
         except Exception as e:
             error_message = f"Step {step_num}: save_excel_with_index: {str(e)}"
             self.logger.error(error_message)
             return False, error_message  # 작업이 실패한 경우 False와 오류 메시지 반환   
     
+    def check_excel_exists(self, step_num, file_path, max_attempts=5):
+        try:
+            """ 파일이 존재하는지 재시도 하며 확인 """
+            attempts = 0
+            while attempts < max_attempts:
+                if os.path.exists(file_path):
+                    return True, "File found"
+                else:
+                    time.sleep(3)
+                    attempts += 1
+            return False, "File not found after multiple attempts"
 
-    def check_excel_exists(self, step_num:int):
-        try: 
-            time.sleep(3)
-            self.logger.info(f"Step {step_num}: Starting 'check_excel_exists'.")
-            
-            if not os.path.exists(self.filepath):
-                self.logger.error(f"Step {step_num}: Excel file not found at: {self.filepath}")
-                return False, f"Excel file not found at: {self.filepath}"
-            
-            self.logger.info(f"Step {step_num}: Excel file confirmed to exist at: {self.filepath}.")
         except Exception as e:
-            error_message = f"Step {step_num}: search_po_num failed: {str(e)}"
+            error_message = f"Step {step_num}: check_excel_exists failed: {str(e)}"
             self.logger.error(error_message)
-            return False, error_message  # 작업이 실패한 경우 False와 오류 메시지 반환   
+            return False, error_message
     
     def compare_with_json(self, step_num:int, step: Step):
         try:
@@ -529,23 +544,6 @@ class HN_ReservationManager:
             combined_data = list(zip(index_list, activity_list, material_code_list, quantity_list))
             
             return combined_data
-                        
-            # #? read_column 타입 확인하기
-            # self.logger.debug(f"Type of step.read_column: {type(step.read_column)}")
-            # #? 열 인덱스가 데이터프레임의 열 범위 내에 있는지 확인
-            # if step.read_column < 0 or step.read_column >= len(df.columns):
-            #     self.logger.error(f"Step {step_num}: Column index {step.read_column} is out of range.")
-            #     return False, f"Step {step_num}: Column index {step.read_column} is out of range."
-            # self.logger.info(f"Step {step_num}: 'P/O품번' Column index '{step.read_column}' found in the DataFrame.")
-            # #? 열 데이터 추출 후 문자열로 변환
-            # column_data = df.iloc[:, step.read_column].astype(str).tolist() # iloc: pandas의 인덱싱 함수로, 위치 기반 인덱싱
-            # #? 데이터 정규화 및 검증
-            # 1. 양쪽 공백 제거
-            # column_data = [ item.strip() for item in column_data ]
-            # self.logger.info(f"Step {step_num}: Extracted a total of {len(column_data)} entries from column 'P/O품번' (index {step.read_column}).")
-            # time.sleep(1)
-            # #? 최종 데이터 반환
-            # return column_data # 리스트 형식
         
         except Exception as e:
             error_message = f"Step {step_num}: read_column_data failed: {str(e)}"
@@ -605,8 +603,8 @@ class HN_ReservationManager:
             
             time.sleep(3)
                 
-            self.logger.info(f"Step {step_num}: Action performed on all {matches} targets successfully.")
-            return True, f"Step {step_num}: Action performed on all {matches} targets successfully."
+            self.logger.info(f"Step {step_num}: Action performed on all {matching_data} targets successfully.")
+            return True, f"Step {step_num}: Action performed on all {matching_data} targets successfully."
             
         except Exception as e:
             error_message = f"Step {step_num}: move_to_target_and_perform_action failed: {str(e)}"
@@ -814,24 +812,22 @@ class HN_ReservationManager:
             filename = PyAutoGuiHelper.generate_filename("직납_직사급_납품예약", "xlsx")
             self.logger.debug(f"Step {step_num}: Generated filename is {filename}.")
             
-            time.sleep(1)
+            time.sleep(0.5)
             reserv_filepath = os.path.join(file_directory, filename)
             self.logger.info(f"Step {step_num}: File path constructed: {reserv_filepath}.")
             
-            time.sleep(1)
+            time.sleep(0.5)
             PyAutoGuiHelper.save_file_with_name(reserv_filepath)
             self.logger.info(f"Step {step_num}: Excel file saved successfully as {reserv_filepath}.")
             
-            # 파일 저장중........
-            time.sleep(8)   
-            self.logger.debug(f"Step {step_num}: Waiting for 3 seconds after saving file.")
+            time.sleep(1)
             
-            # 파일 존재 확인
-            if not os.path.exists(reserv_filepath):
-                time.sleep(1) 
-                self.logger.error(f"Step {step_num}: Excel file not found at: {reserv_filepath}")
-                return False, f"Excel file not found at: {reserv_filepath}"
-
+            success, message = self.check_excel_exists(step_num, file_path=reserv_filepath, max_attempts=5)
+            self.logger.info(f"Step {step_num}: {message}")
+            
+            if not success:
+                return False, "File not found after saving attempt."
+            
             #! 엑셀파일 읽어서 행 갯수 구하기
             df = pd.read_excel(reserv_filepath, header=0, engine='openpyxl')
             self.logger.debug(f"Step {step_num}: Excel file loaded into DataFrame.")
@@ -914,7 +910,6 @@ class HN_ReservationManager:
             self.logger.error(error_message)
             return False, error_message  # 작업이 실패한 경우 False와 오류 메시지 반환
 
-    
     ############################################# step_7 #############################################
     def print_invoice_and_details(self, step_num:int, step:Step):
         try: 
@@ -950,18 +945,16 @@ class HN_ReservationManager:
             PyAutoGuiHelper.perform_click(step.pos_trns_btn) # 507,458
             self.logger.info(f"Step {step_num}: Clicking '거래명세서출력' button at {step.pos_trns_btn}.")
                         
-            time.sleep(3)
-
-            loading_manager = SuperLoadingManager()
-            success, message = loading_manager.wait_for_loading_to_complete() 
-            self.logger.debug(f"Step {step_num}: Loading detect_loading result - success: {success}, message: {message}")  
+            time.sleep(1)
+            
+            success, message =  self.super_loading_manager.wait_for_loading_to_complete()
+            self.logger.debug(f"Step {step_num}: '거래명세서출력' 버튼 클릭 로딩 감지 결과 - success: {success}, message: {message}")
             if not success:
                 if self.master_mode:
-                    self.logger.debug(f"Step {step_num}: Loading detection failed, \n Waiting for 60 seconds before retry...")
-                    time.sleep(60) 
+                    self.logger.debug(f"Step {step_num}:[마스터모드 활성화] 로딩 감지 실패, \n 30초 대기 시간 추가...")
+                    time.sleep(30) 
                 else:
-                    return False, message  # 로딩 실패 시 반환
-                
+                    return False, message 
             
             # 모든 체크박스 클릭
             PyAutoGuiHelper.perform_click(step.pos_all_checkbox) # 696,470
@@ -972,17 +965,22 @@ class HN_ReservationManager:
             PyAutoGuiHelper.perform_click(step.pos_tag_btn) # 1039,375
             self.logger.info(f"Step {step_num}: Clicking '자재 TAG' button at {step.pos_tag_btn}.")
             
-            time.sleep(3)
+            #!#!#!#!#!#!#!#!#!#!#!#!로딩 실패 시 재시도 로직 추가
+            #! 재시도 횟수 초과 시 종료
+            max_retries = 3
+            for attempt in range(max_retries):
+                success, message = self.super_loading_manager.wait_for_loading_to_complete()
+                if success:
+                    break # 성공하면 반복 종료
+                self.logger.debug(f"Step {step_num}: Retry attempt {attempt + 1} - Waiting for loading to complete")
+                time.sleep(3)  # 재시도 대기 시간
 
-            loading_manager = SuperLoadingManager()
-            success, message = loading_manager.wait_for_loading_to_complete() 
-            self.logger.debug(f"Step {step_num}: Loading detect_loading result - success: {success}, message: {message}")  
+            # 재시도 횟수 초과 시 종료 로직
             if not success:
                 if self.master_mode:
-                    self.logger.debug(f"Step {step_num}: Loading detection failed, \n Waiting for 60 seconds before retry...")
-                    time.sleep(60) 
-                else:
-                    return False, message  # 로딩 실패 시 반환
+                    self.logger.debug(f"Step {step_num}: 마스터모드 활성화 - 최대 시도 횟수 초과, 시스템 종료를 시도합니다.")
+                    pyautogui.hotkey('shift', 'q')  # 종료 단축키 시도
+                return False, "Maximum retry limit reached, process terminated."
             
             # 닫기
             PyAutoGuiHelper.perform_click(step.pos_tag_close_btn) # 1422,909
@@ -995,24 +993,54 @@ class HN_ReservationManager:
             PyAutoGuiHelper.perform_click(step.pos_trns_print_btn) # 737,373
             self.logger.info(f"Step {step_num}: Clicking '거래명세서 출력' button at {step.pos_trns_print_btn}.")
             
-            time.sleep(3)
+            max_retries = 3
+            for attempt in range(max_retries):
+                success, message = self.super_loading_manager.wait_for_loading_to_complete()
+                if success:
+                    break # 성공하면 반복 종료
+                self.logger.debug(f"Step {step_num}: Retry attempt {attempt + 1} - Waiting for loading to complete")
+                time.sleep(3)  # 재시도 대기 시간
 
-            loading_manager = SuperLoadingManager()
-            success, message = loading_manager.wait_for_loading_to_complete() 
-            self.logger.debug(f"Step {step_num}: Loading detect_loading result - success: {success}, message: {message}")  
+            # 재시도 횟수 초과 시 종료 로직
             if not success:
                 if self.master_mode:
-                    self.logger.debug(f"Step {step_num}: Loading detection failed, \n Waiting for 60 seconds before retry...")
-                    time.sleep(60) 
-                else:
-                    return False, message  # 로딩 실패 시 반환
+                    self.logger.debug(f"Step {step_num}: 마스터모드 활성화 - 최대 시도 횟수 초과, 시스템 종료를 시도합니다.")
+                    pyautogui.hotkey('shift', 'q')  # 종료 단축키 시도
+                return False, "Maximum retry limit reached, process terminated."
 
+            # 파일 저장 아이콘 클릭
+            PyAutoGuiHelper.perform_click((497,174))
+            self.logger.info(f"Step {step_num}: '파일 저장' 아이콘 클릭 (497,174)")
+            
+            time.sleep(1)
+
+            # 매개변수가 틀립니다 팝업 처리
+            PyAutoGuiHelper.perform_click((994,584))
+            self.logger.info(f"Step {step_num}: '매개변수가 틀립니다' 팝업 처리 (994,584)")
+
+            # 파일 저장 경로 입력란 클릭
+            PyAutoGuiHelper.perform_double_click((834,579))
+            self.save_pdf_file(step_num, step, entity_name='한내적치장_거래명세서', po_no=self.po_no)
+
+            time.sleep(1)
+
+            # 매개변수가 틀립니다 팝업 처리
+            PyAutoGuiHelper.perform_click((994,584))
+
+            time.sleep(3)
+                
             ################################################# 전체페이지 1부 인쇄
             PyAutoGuiHelper.perform_click(step.pos_trns_print_icon) # 520,169
             self.logger.info(f"Step {step_num}: Clicking '인쇄 아이콘' at {step.pos_trns_print_icon}.")
             
-            # 대기
-            time.sleep(3)
+            success, message =  self.super_loading_manager.wait_for_loading_to_complete()
+            self.logger.debug(f"Step {step_num}: '인쇄' 아이콘 클릭 로딩 감지 결과 - success: {success}, message: {message}")
+            if not success:
+                if self.master_mode:
+                    self.logger.debug(f"Step {step_num}:[마스터모드 활성화] 로딩 감지 실패, \n 30초 대기 시간 추가...")
+                    time.sleep(30) 
+                else:
+                    return False, message 
             
             PyAutoGuiHelper.perform_click(step.pos_trns_confirm_btn_1) # 1080,633
             self.logger.info(f"Step {step_num}: Clicking '확인' button for printing at {step.pos_trns_confirm_btn_1}.")
@@ -1035,27 +1063,59 @@ class HN_ReservationManager:
             self.logger.info(f"Step {step_num}: Clicking '납품상세리스트 출력' button at {step.pos_ddl_print_btn}.")
             
             time.sleep(3)
-            
+
             # 납품상세리스트 을(를) 출력 하시겠습니까?
             PyAutoGuiHelper.perform_click(step.pos_ddl_confirm_btn) # 1054,601
             self.logger.info(f"Step {step_num}: Confirming '납품상세리스트 출력 을(를) 출력 하시겠습니까?' at {step.pos_ddl_confirm_btn}.")
-            
-            # 로딩 감지
-            time.sleep(3)   
-            success, message = self.detect_loading(step_num, step)
-            self.logger.debug(f"Step {step_num}: Loading detect_loading result - success: {success}, message: {message}")  
+
+            max_retries = 3
+            for attempt in range(max_retries):
+                success, message = self.super_loading_manager.wait_for_loading_to_complete()
+                if success:
+                    break # 성공하면 반복 종료
+                self.logger.debug(f"Step {step_num}: Retry attempt {attempt + 1} - Waiting for loading to complete")
+                time.sleep(3)  # 재시도 대기 시간
+
+            # 재시도 횟수 초과 시 종료 로직
             if not success:
                 if self.master_mode:
-                    self.logger.debug(f"Step {step_num}: Loading detection failed, \n Waiting for 60 seconds before retry...")
-                    time.sleep(60)
-                else:
-                    return False, message
-            time.sleep(5)
+                    self.logger.debug(f"Step {step_num}: 마스터모드 활성화 - 최대 시도 횟수 초과, 시스템 종료를 시도합니다.")
+                    pyautogui.hotkey('shift', 'q')  # 종료 단축키 시도
+                return False, "Maximum retry limit reached, process terminated."
             
+            # 파일 저장 아이콘 클릭
+            PyAutoGuiHelper.perform_click((497,174))
+            self.logger.info(f"Step {step_num}: '파일 저장' 아이콘 클릭 (497,174)")
+            
+            time.sleep(1)
+
+            # 매개변수가 틀립니다 팝업 처리
+            PyAutoGuiHelper.perform_click((994,584))
+            self.logger.info(f"Step {step_num}: '매개변수가 틀립니다' 팝업 처리 (994,584)")
+
+            # 파일 저장 경로 입력란 클릭
+            PyAutoGuiHelper.perform_double_click((834,579))
+            self.save_pdf_file(step_num, step, entity_name='한내적치장_납품상세리스트', po_no=self.po_no)
+
+            time.sleep(1)
+
+            # 매개변수가 틀립니다 팝업 처리
+            PyAutoGuiHelper.perform_click((994,584))
+
+            time.sleep(3)
+
             ################################################# 전체페이지 1부 인쇄
             PyAutoGuiHelper.perform_click(step.pos_ddl_print_icon_1) # 520,169
             self.logger.info(f"Step {step_num}: Clicking '인쇄 아이콘' at {step.pos_ddl_print_icon_1}.")
-            time.sleep(3)
+            
+            success, message =  self.super_loading_manager.wait_for_loading_to_complete()
+            self.logger.debug(f"Step {step_num}: '인쇄' 아이콘 클릭 로딩 감지 결과 - success: {success}, message: {message}")
+            if not success:
+                if self.master_mode:
+                    self.logger.debug(f"Step {step_num}:[마스터모드 활성화] 로딩 감지 실패, \n 10초 대기 시간 추가...")
+                    time.sleep(10) 
+                else:
+                    return False, message 
             
             PyAutoGuiHelper.perform_click(step.pos_ddl_confirm_btn_1) # 1080,633
             self.logger.info(f"Step {step_num}: Clicking '확인' button for printing at {step.pos_ddl_confirm_btn_1}.")
@@ -1065,7 +1125,15 @@ class HN_ReservationManager:
             ################################################# 4페이지 모아찍기 1부 인쇄
             PyAutoGuiHelper.perform_click(step.pos_ddl_print_icon_2) # 520,169
             self.logger.info(f"Step {step_num}: Clicking '인쇄 아이콘' at {step.pos_ddl_print_icon_2}.")
-            time.sleep(3)
+            
+            success, message =  self.super_loading_manager.wait_for_loading_to_complete()
+            self.logger.debug(f"Step {step_num}: '인쇄' 아이콘 클릭 로딩 감지 결과 - success: {success}, message: {message}")
+            if not success:
+                if self.master_mode:
+                    self.logger.debug(f"Step {step_num}:[마스터모드 활성화] 로딩 감지 실패, \n 10초 대기 시간 추가...")
+                    time.sleep(10) 
+                else:
+                    return False, message  
             
             PyAutoGuiHelper.perform_click(step.pos_ddl_page_options_2) # 1177,505 # 4페이지 옵션
             self.logger.info(f"Step {step_num}: Selecting '인쇄 옵션' at {step.pos_ddl_page_options_2}.")
@@ -1086,8 +1154,16 @@ class HN_ReservationManager:
             
             ################################################# 1페이지 모아찍기 1부
             PyAutoGuiHelper.perform_click(step.pos_ddl_print_icon_3) # 520,169
-            self.logger.info(f"Step {step_num}: Clicking '1페이지 모아찍기' at {step.pos_ddl_print_icon_2}.")
-            time.sleep(3)
+            self.logger.info(f"Step {step_num}: Clicking '인쇄' at {step.pos_ddl_print_icon_2}.")
+            
+            success, message =  self.super_loading_manager.wait_for_loading_to_complete()
+            self.logger.debug(f"Step {step_num}: '인쇄' 아이콘 클릭 로딩 감지 결과 - success: {success}, message: {message}")
+            if not success:
+                if self.master_mode:
+                    self.logger.debug(f"Step {step_num}:[마스터모드 활성화] 로딩 감지 실패, \n 10초 대기 시간 추가...")
+                    time.sleep(10) 
+                else:
+                    return False, message  
             
             PyAutoGuiHelper.perform_click(step.pos_ddl_page_options_3) # 1177,505 # 1페이지 옵션
             self.logger.info(f"Step {step_num}: Selecting '인쇄 옵션' at {step.pos_ddl_print_icon_3}.")
@@ -1116,37 +1192,48 @@ class HN_ReservationManager:
             self.logger.error(error_message)
             return False, error_message  # 작업이 실패한 경우 False와 오류 메시지 반환
 
+    def save_pdf_file(self, step_num:int, step:Step, entity_name:str, po_no):
+        # PDF 저장 경로 생성
+        pdf_save_path = PathHelper.get_desktop_save_path(entity_name, po_no)
+        self.logger.info(f"Step {step_num}: PDF 파일을 저장할 경로: {pdf_save_path}")
+        
+        # PyAutoGuiHelper를 통해 PDF 파일로 저장
+        PyAutoGuiHelper.save_file_with_name(pdf_save_path)
+        self.logger.info(f"Step {step_num}: 파일이 성공적으로 저장되었습니다: {pdf_save_path}")
+
+
         
     ############################################# step_8 #############################################    
     def reset_for_po_number_search(self, step_num:int, step:Step):
-        try:
+        try: 
             time.sleep(3)
             self.logger.info(f"Step {step_num}: Starting 'reset_for_po_number_search'.")
-            pyautogui.click()
-            time.sleep(1)
             
-            # 모든 창 닫기
-            self.logger.debug(f"Step {step_num}: Pressing 'alt + x' to close all windows.")
-            pyautogui.hotkey('alt', 'x')
-            time.sleep(1)
+            # 현재 창 포커스
+            pyautogui.click(step.pos_window_focus)
+            self.logger.info(f"Step {step_num}: Clicking 'pos_window_focus' input at position {step.pos_window_focus}. / pos_window_focus: {step.pos_window_focus}")
             
-            # 모든 창 닫기
-            self.logger.debug(f"Step {step_num}: Pressing 'alt + x' to close all windows.")
-            pyautogui.hotkey('alt', 'x')
-            time.sleep(1)
+            # 현재 창 닫기
+            for i in range(2):
+                self.logger.debug(f"Step {step_num}: Pressing 'alt + x' to close all windows. (Attempt {i+1})")
+                pyautogui.hotkey('alt','x', interval=0.5)
+                
+            self.logger.info(f"Step {step_num}: Finished pressing 'alt + x' {i+1} times.")
 
+            time.sleep(0.5)
+            
             # 상위 메뉴 탭 모두 닫기
-            PyAutoGuiHelper.perform_click(step.pos_menu_tab)
-            self.logger.info(f"Step {step_num}: Moving to '상위 모든 메뉴 탭 닫기' menu at {step.pos_menu_tab}.")
-            time.sleep(1)
+            PyAutoGuiHelper.perform_click(step.pos_menu_tab) # 214,95
+            self.logger.info(f"Step {step_num}: Moving to '모든 메뉴 탭 닫기' menu at {step.pos_menu_tab}.")
             
             self.logger.info(f"Step {step_num}: 'reset_for_po_number_search' completed successfully.")
             return True, "reset_for_po_number_search completed successfully."
-
+            
         except Exception as e:
             error_message = f"Step {step_num}: reset_for_po_number_search failed: {str(e)}"
             self.logger.error(error_message)
-            return False, error_message
+            return False, error_message  # 작업이 실패한 경우 False와 오류 메시지 반환
+        
 
     ##################################### 공통 메서드 #############################################
     def detect_loading(self, step_num: int, step: Step):
@@ -1181,10 +1268,11 @@ def execute_hn_delv_proc(json_data: str):
     master_mode = PathHelper.get_config_value('master_mode', False)
     logger = LoggerManager.get_logger(__name__)
     loading = LoadingIconManager()
+    super_loading_manager = SuperLoadingManager()
     res = ResponseManager()
 
     step_num = 0  # 초기화
-    manager = HN_ReservationManager(json_data, res, logger, loading, master_mode)  
+    manager = HN_ReservationManager(json_data, res, logger, super_loading_manager, loading, master_mode)  
     
     try: 
         total_steps = len(manager.contexts.__annotations__) # Contexts 클래스의 모든 스텝 필드를 카운트

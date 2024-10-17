@@ -13,6 +13,7 @@ from common.logger_manager import LoggerManager
 from common.response_manager import ResponseManager
 from common.popup_manager import PopupManager
 from common.loading_manager import LoadingIconManager
+from common.loading_icon_manager import SuperLoadingManager
 from common.utils.helper import PyAutoGuiHelper
 from common.utils.keyboard_utils import CapslockHelper
 from common.utils.path_utils import PathHelper
@@ -131,8 +132,9 @@ master_mode = PathHelper.get_config_value('master_mode',False)
 # CW_ReqDueManager 객체를 생성합니다.
 logger = LoggerManager.get_logger(__name__)
 loading = LoadingIconManager()
+super_loading_manager = SuperLoadingManager()
 res = ResponseManager()
-manager = HN_ReservationManager(json_data_str, res, logger, loading, master_mode)
+manager = HN_ReservationManager(json_data_str, res, logger, super_loading_manager, loading, master_mode)
 
 # 원하는 스텝 넘버를 지정합니다.
 step_num = 2

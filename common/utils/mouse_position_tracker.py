@@ -59,7 +59,7 @@ if __name__ == "__main__":
         print(pyautogui.position())
 
 
-# def print_mouse_position():
+def print_mouse_position():
     
     
 #     """=====================================

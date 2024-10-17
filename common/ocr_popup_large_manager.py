@@ -3,7 +3,6 @@ import numpy as np
 import pyautogui
 import pytesseract
 import time
-import re
 import gc
 
 from common.logger_manager import LoggerManager

@@ -3,24 +3,26 @@ import numpy as np
 
 # 엑셀 파일 읽기
 성공case_1 =  r"C:\Users\123\Desktop\일반납품예약\성공\P12XA03905.xlsx"  # 실제 파일 경로로 변경하세요
+성공case_2 = r"C:\Users\123\Desktop\일반납품예약\성공\P12XA03905.xlsx"
+
 
 실패case_1 = r"C:\Users\123\Desktop\일반납품예약\실패\P12XA03281.xlsx"
 실패case_2 = r"C:\Users\123\Desktop\일반납품예약\실패\P13PA00030.xlsx"
+실패case_3 = r"C:\Users\123\Desktop\일반납품예약\실패\P13PA00031.xlsx"
 
-실패case_3 = r"C:\Users\123\Desktop\일반납품예약\실패\P13PA00086.xlsx"
 
 df = pd.read_excel(실패case_3, header=0, engine='openpyxl')
 print(f"모든 데이터: {df}")
 
 # P/O품번, 납품예약불가사유, 납품예약번호 열을 문자열로 변환
-part_po_row = df.iloc[:, 0]  # po품번을 문자열로 변환
-cause_row = df.iloc[:, 3]  # 납품예약불가사유를 문자열로 변환
-reserv_num_row = df.iloc[:, 10] # 납품예약번호를 문자열로 변환
+part_po_row = df.iloc[:, 0].astype(str)  # po품번을 문자열로 변환
+cause_row = df.iloc[:, 3].astype(str)  # 납품예약불가사유를 문자열로 변환
+reserv_num_row = df.iloc[:, 10].astype(str) # 납품예약번호를 문자열로 변환
 
 
 condition = (
-    (cause_row.isnull()) |  # NaN, None 값 확인
-    (cause_row == '')  # 빈 문자열 확인
+    (cause_row.isnull())   # NaN, None 값 확인
+    # (cause_row == '')  # 빈 문자열 확인
 )
 
 # condition = (
@@ -28,8 +30,10 @@ condition = (
 # )
 
 excel_data = part_po_row[condition]
-print(f'excel_data: \n {excel_data}')
 
+print(f"[excel_data] : \n{excel_data}")
+print("Detailed data types of each element in excel_data:")
+print(excel_data.apply(type))
 
 
 # print(f'cause_row type: {cause_row.isnull()} {cause_row.dtype}')

@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import json
 import pytesseract
@@ -42,6 +43,38 @@ class PathHelper:
 
         return os.path.join(root_dir, *norm_path_parts)
     
+    @staticmethod
+    def get_desktop_save_path(entity_name, po_no):
+        """
+        바탕화면의 'RPA/처리완료' 폴더에 날짜별로 하위 폴더를 만들어 파일 경로를 반환하는 함수
+        Args:
+            entity_name (str): '중국법인', '한내적치장' 등과 같은 폴더 이름
+            po_no (str): 저장할 파일의 이름에 사용할 PO 번호
+        Returns:
+            str: 최종 PDF 파일의 절대 경로
+        """
+        # 바탕화면 경로 지정
+        desktop_path = os.path.join(os.path.expanduser('~'), 'Desktop','RPA','인쇄')
+        # 오늘 날짜 폴더 생성
+        today = datetime.now().strftime('%Y%m%d')
+        full_path = os.path.join(desktop_path, entity_name, today)
+        
+        # 폴더가 존재하지 않으면 생성
+        os.makedirs(full_path, exist_ok=True)
+
+        # 파일명 기본 형식 지정
+        base_filename = f"{po_no}.pdf"
+        file_path = os.path.join(full_path, base_filename)
+        
+        # 파일명 중복 체크 및 고유 파일명 생성
+        counter = 1
+        while os.path.exists(file_path):
+            # 중복된 경우 숫자를 추가하여 새로운 파일명 생성
+            file_path = os.path.join(full_path, f"{po_no}_({counter}).pdf")
+            counter += 1
+        
+        return file_path
+
     @staticmethod
     def get_config_value(key, default=None):
         """
