@@ -69,15 +69,29 @@ manager = StartApp(json_data_str, logger, super_loading_manager, loading_manager
 step_num = 2
 step = manager.contexts.step_2  # 원하는 스텝에 맞게 변경하세요.
 
-# 개별 메서드를 호출하여 테스트합니다.
+# 개별 메서드를 호출하여 테스트합니다.00313
 print("1번 프로세스 start")
-manager.start_application(1, manager.contexts.step_1)
-print("end")
-time.sleep(1)
+success, message = manager.start_application(1, manager.contexts.step_1)
+if not success:
+    print(f"애플리케이션 시작 실패: {message}")
+    sys.exit(1)
+print("애플리케이션 시작 완료")
+
+# 애플리케이션이 완전히 로드될 때까지 대기
+time.sleep(10)
+
 print("2번 프로세스 start")
-manager.login(2, manager.contexts.step_2)
-print("end")
-time.sleep(1)
+success, message = manager.login(2, manager.contexts.step_2)
+if not success:
+    print(f"로그인 실패: {message}")
+    sys.exit(1)
+print("로그인 완료")
+
+time.sleep(5)
+
 print("3번 프로세스 start")
-manager.access_work_system(3, manager.contexts.step_3)
-print("end")
+success, message = manager.access_work_system(3, manager.contexts.step_3)
+if not success:
+    print(f"업무시스템 접속 실패: {message}")
+    sys.exit(1)
+print("업무시스템 접속 완료")

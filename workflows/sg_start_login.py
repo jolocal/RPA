@@ -66,6 +66,8 @@ class StartApp:
         self.main_window = ""
         self.app = None
         
+        self.bdcam_path = ""
+        
         self.master_mode = master_mode
         print(f"master_mode in StartApp: {self.master_mode}")
         logger.debug(f"master_mode in StartApp: {self.master_mode}")
@@ -147,6 +149,7 @@ class StartApp:
 
     def start_application(self, step_num: int, step: Step):
         try:
+            # 메인 애플리케이션 실행 로직
             time.sleep(5)
             self.logger.info(f"Step {step_num}: Starting application with path: {step.app_path}.")
             
@@ -161,7 +164,7 @@ class StartApp:
             
             # 창이 나타나고 준비될 때까지 최대 3번 재시도
             for attempt in range(3):
-                if self.main_window.wait('ready', timeout=180):  # 'ready' 상태는 창이 사용자 입력을 받을 준비가 된 상태를 의미
+                if self.main_window.wait('ready', timeout=180):
                     self.logger.info(f"Step {step_num}: 메인 윈도우 창이 준비되었습니다.")
                     self.main_window.set_focus()
                     
@@ -175,11 +178,11 @@ class StartApp:
             # 3번의 시도가 모두 실패한 경우, master_mode 활성화
             if self.master_mode:
                 self.logger.error(f"Step {step_num}: 3번의 재시도 끝에도 메인 창이 준비되지 않았습니다. master_mode를 활성화합니다.")
-                time.sleep(5)  # master_mode 활성화 후 대기 시간
+                time.sleep(5)
                 if self.main_window.wait('ready', timeout=180):
                     self.logger.info(f"Step {step_num}: master_mode 활성화 후 메인 창이 준비되었습니다.")
                     self.main_window.set_focus()
-                    time.sleep(5)  # 애플리케이션 안정화를 위한 추가 대기 시간
+                    time.sleep(5)
                     return True, "애플리케이션이 master_mode로 성공적으로 시작되었습니다."
 
             self.logger.debug(f"애플리케이션 로드 실패: 메인창이 준비되지 않았습니다.")
