@@ -559,7 +559,8 @@ class CW_ReqDueManager:
             # matches = [(index, value) for index, value in enumerate(excel_po_list) if value in json_po_list ]
             
             #? 수정2:
-            matches = [(index, value) for index, value in excel_po_list if str(value) in json_po_list]
+            # matches = [(index, value) for index, value in excel_po_list if str(value) in json_po_list]
+            matches = [(index, value) for index, value in enumerate(excel_po_list) if value in json_po_list]
             
             if not matches:
                 self.logger.warning(f"Step {step_num}: No matching items found in column '{step.read_column}'.")

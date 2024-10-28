@@ -25,6 +25,10 @@ def execute_retry():
         print(f"Starting 'reset_for_po_number_search'.")
         time.sleep(5)
         
+        # 변경된 내용이 있습니다. 그래도 종료 하시겠습니까?
+        pyautogui.click((928,559))
+        logger.info(f"Clicking '변경된 내용이 있습니다. 그래도 종료 하시겠습니까?' at position [928,559].")
+        
         # 현재 창 닫기
         pyautogui.click((1563,95))
         logger.info(f"Clicking 'pos_window_focus' input at position [1563,95].")

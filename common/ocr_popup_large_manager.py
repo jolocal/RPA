@@ -4,6 +4,7 @@ import pyautogui
 import pytesseract
 import time
 import gc
+from fuzzywuzzy import fuzz
 
 from common.logger_manager import LoggerManager
 from common.text_normalizer import normalize_text
@@ -17,6 +18,7 @@ class PopupManager:
     
     # 캐시 딕셔너리 추가
     cache = {}
+    cache_duration = 600  # 캐시 만료 시간 (초)
     
     # REGION_X_START = 800
     # REGION_Y_START = 450
@@ -80,15 +82,18 @@ class PopupManager:
             return image, None
 
     @staticmethod
-    def extract_text_from_popup(popup_region, popup_type):
+    def extract_text_from_popup(popup_region, popup_type, success_texts):
         """OCR을 통해 팝업창 텍스트를 추출"""
         # 팝업 영역 해시 생성 (이미지를 고유하게 식별)
         hash_value = hash(popup_region.tobytes())
         
-        # 캐시 확인: 이미 처리된 이미지라면 캐시된 결과를 반환
+        #! 수정
+        # 캐시 확인: 만료 확인 후, 이미 처리된 이미지라면 캐시된 결과를 반환
         if hash_value in PopupManager.cache:
-            logger.debug("Using cached OCR result.")
-            return PopupManager.cache[hash_value]
+            cached_text, timestamp = PopupManager.cache[hash_value]
+            if time.time() - timestamp < PopupManager.cache_duration:
+                logger.debug("Using cached OCR result.")
+                return cached_text
         
         # 이미지 전처리: 그레이스케일, 이진화, 대비 조정
         gray = cv2.cvtColor(popup_region, cv2.COLOR_BGR2GRAY)
@@ -103,16 +108,18 @@ class PopupManager:
         
         # OCR을 통해 텍스트 추출
         text = pytesseract.image_to_string(enlarged_image, lang='kor+eng', config=custom_config)
-        
         # logger.debug(f"Extracted text: {text.strip()}")
         
         #! 정규화 단계 - 잘못 인식된 텍스트 수정
         normalized_text = normalize_text(text, popup_type)
         logger.debug(f"Normalized text: {normalized_text.strip()}")
         
-        # 캐시에 결과 저장
-        PopupManager.cache[hash_value] = normalized_text
-        logger.debug(f"Text cached with hash: {hash_value}")
+        #! 성공 텍스트와 유사도 비교 후 캐시에 저장
+        similarity_threshold = 80
+        similarity = max(fuzz.ratio(normalized_text, success_text) for success_text in success_texts)
+        if similarity >= similarity_threshold:
+            PopupManager.cache[hash_value] = (normalized_text, time.time())
+            logger.debug(f"Text with {similarity}% similarity cached with hash: {hash_value}")
         
         return normalized_text
 
@@ -154,37 +161,44 @@ class PopupManager:
         :return: (성공 여부, 추출된 텍스트) 튜플
         """
         attempts = 0
+        previous_text = None
         detected_text = ""  # 초기화
-
+        consistent_count = 0
+        required_consistency = 3
+        
         while attempts < max_attempts:
             screenshot = PopupManager.take_screenshot()
             image_with_popup, popup_region = PopupManager.detect_popup(screenshot)
             
             if popup_region is not None:
                 # 팝업창 영역에서 텍스트 추출
-                detected_text = PopupManager.extract_text_from_popup(popup_region, popup_type)
+                detected_text = PopupManager.extract_text_from_popup(popup_region, popup_type, success_texts)
                 print("추출된 텍스트:", detected_text)
                 
-                # 텍스트 분석 및 버튼 클릭
-                success, matched_text = PopupManager.analyze_and_click(detected_text, success_texts)
-                
-                # 성공 텍스트 감지 시 처리
-                if success:
-                    logger.info(f"Popup processed successfully on attempt {attempts + 1}.")
-                    return True, matched_text  # 성공적으로 처리되었음을 반환
+                # 동일 텍스트 연속 감지 여부 확인
+                if detected_text == previous_text:
+                    consistent_count += 1
                 else:
-                    logger.info("Detected failure text or no matching text found.")
-                    # 실패한 경우에도 재시도 루프 진행
+                    consistent_count = 1
+                previous_text = detected_text
+
+                # 일관된 감지 시 분석
+                if consistent_count >= required_consistency:
+                    success, matched_text = PopupManager.analyze_and_click(detected_text, success_texts)
+                    if success:
+                        logger.info(f"Popup processed successfully on attempt {attempts + 1}.")
+                        return True, matched_text
+                    else:
+                        logger.info("Detected failure text or no matching text found.")
             else:
                 logger.debug(f"Popup not detected on attempt {attempts + 1}")
-                print("팝업창이 감지되지 않았습니다.")
-
-            # 시도 후 지연 시간 대기
+            
+                # 텍스트 분석 및 버튼 클릭
+                success, matched_text = PopupManager.analyze_and_click(detected_text, success_texts)
+            
             attempts += 1
             time.sleep(delay_between_attempts)
-        
-            # 메모리 해제
-            gc.collect() 
+            gc.collect()
             
 
         # 모든 시도가 실패한 경우

@@ -120,29 +120,29 @@ step = manager.contexts.step_2  # 원하는 스텝에 맞게 변경하세요.
 
 # 개별 메서드를 호출하여 테스트합니다.
 
-print("1- start")
-manager.navigate_to_deliv_reserv_improv(1, manager.contexts.step_1)
-print("1- end")
+# print("1- start")
+# manager.navigate_to_deliv_reserv_improv(1, manager.contexts.step_1)
+# print("1- end")
 
-print("2 - start")
-manager.load_po_table_data(2, manager.contexts.step_2)
-print("2- end")
+# print("2 - start")
+# manager.load_po_table_data(2, manager.contexts.step_2)
+# print("2- end")
 
-print("3 - start")
-manager.input_vehicle_information(3, manager.contexts.step_3)
-print("3- end")
+# print("3 - start")
+# manager.input_vehicle_information(3, manager.contexts.step_3)
+# print("3- end")
 
-print("4 - start")
-manager.save_and_verify_excel(4, manager.contexts.step_4)
-print("4- end")
+# print("4 - start")
+# manager.save_and_verify_excel(4, manager.contexts.step_4)
+# print("4- end")
 
-print("5 - start")
-manager.find_matching_rows(5, manager.contexts.step_5)
-print("5- end")
+# print("5 - start")
+# manager.find_matching_rows(5, manager.contexts.step_5)
+# print("5- end")
 
-print("6 - start")
-manager.navigate_to_matching_rows(6, manager.contexts.step_6)
-print("6- end")
+# print("6 - start")
+# manager.navigate_to_matching_rows(6, manager.contexts.step_6)
+# print("6- end")
 
 print("7 - start")
 manager.reserve_delivery(7, manager.contexts.step_7)

@@ -568,7 +568,11 @@ class CW_ReservationManager:
             
             # 중복된 품번 제거 (인덱스가 낮은 첫 번째 p/o 번호만 남김)
             Extracted_data_unique = Extracted_data.drop_duplicates(keep='first')
-            self.logger.debug(f"추출된 데이터 중, 차수(인덱스)가 낮은 데이터 추출(중복X): \n {Extracted_data_unique}")            
+            self.logger.debug(f"추출된 데이터 중, 차수(인덱스)가 낮은 데이터 추출(중복X): \n {Extracted_data_unique}")
+
+            #? 수정요청 : 중복된 품번 제거 (인덱스가 높은 마지막 p/o 번호만 남김)
+            Extracted_data_unique = Extracted_data.drop_duplicates(keep='last')
+            self.logger.debug(f"추출된 데이터 중, 차수(인덱스)가 높은 데이터 추출(중복X): \n {Extracted_data_unique}")            
             
             # 문자열로 변환
             Extracted_data_unique = Extracted_data_unique.astype(str)
@@ -733,6 +737,9 @@ class CW_ReservationManager:
             time.sleep(0.5)
             
             # 자재TAG 클릭
+            PyAutoGuiHelper.perform_click(step.pos_tag_btn) # 1039,375
+            self.logger.info(f"Step {step_num}: Clicking '자재 TAG' button at {step.pos_tag_btn}.")
+            
             max_retries = 3
             for attempt in range(max_retries):
                 success, message = self.super_loading_manager.wait_for_loading_to_complete()

@@ -528,22 +528,29 @@ class HN_ReservationManager:
             self.logger.debug(f"Step {step_num}: Excel file loaded into DataFrame: \n{df}")
             time.sleep(3)
             
-            #! 수정됨 (액티비티(2), 자재코드(4), BOM수량(7) 열 입력)
-            read_column = [2,4,7]
+            #! 수정됨 (액티비티(2), 자재코드(4), BOM수량(7), 납품예약번호(18) 열 입력)
+            read_column = [2,4,7,18]
             activity = read_column[0]
             material_code = read_column[1]
             quantity = read_column[2]
+            deli_reserv_no = read_column[3]
             
             #! 각 열 데이터를 리스트로 변환 후 공백 제거
             activity_list = df.iloc[:, activity].astype(str).apply(str.strip).tolist()
             material_code_list = df.iloc[:, material_code].astype(str).apply(str.strip).tolist()
             quantity_list = df.iloc[:, quantity].astype(str).apply(str.strip).tolist()
+            deli_reserv_no_list = df.iloc[:, deli_reserv_no].astype(str).apply(str.strip).tolist()
             
             #! 엑셀 인덱스와 결합하여 하나의 리스트로 묶음
             index_list = df.index.tolist()
-            combined_data = list(zip(index_list, activity_list, material_code_list, quantity_list))
+            combined_data = list(zip(index_list, activity_list, material_code_list, quantity_list, deli_reserv_no_list))
             
-            return combined_data
+            #! 납품예약번호가 없는 행만 필터링
+            filtered_data = [(index, activity, material_code, quantity)
+                            for index, activity, material_code, quantity, deli_reserv_no in combined_data
+                            if deli_reserv_no.lower() =='nan' or deli_reserv_no == '']  # 납품예약번호가 비어있는 경우만 포함
+            
+            return filtered_data
         
         except Exception as e:
             error_message = f"Step {step_num}: read_column_data failed: {str(e)}"

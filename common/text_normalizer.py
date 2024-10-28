@@ -2,6 +2,10 @@ import re
 
 def normalize_for_pallet_creation(text):
     # Success
+    text = re.sub('예lletSS', 'Pallet생성', text)
+    text = re.sub('SIAL', '하시겠습니까?', text)
+    text = re.sub('예lletSS SIAL', 'Pallet생성 하시겠습니까?', text)
+    
     text = re.sub(r'히터생성', 'Pallet생성', text)
     text = re.sub(r'a', '예', text)
     text = re.sub(r'마니모', '아니오', text)

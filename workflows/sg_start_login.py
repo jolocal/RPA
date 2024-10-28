@@ -272,7 +272,7 @@ class StartApp:
             pyautogui.moveTo(step.pos_work_btn)
             pyautogui.click()
 
-            time.sleep(5)
+            time.sleep(10)
             
             #!#!#!#!#!#!#!#!#!#! 업무시스템 접속시 로딩 감지 #!#!#!#!#!#!#!#!#!#!
             success, message = self.super_loading_manager.wait_for_loading_to_complete()
