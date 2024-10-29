@@ -379,11 +379,10 @@ class HN_ReservationManager:
             self.logger.info(f"Step {step_num}: Starting 'find_and_input_inbound_date'.")
             
             # 엑셀 저장
-            self.save_excel_with_index(step_num, step)
+            success, message = self.save_excel_with_index(step_num, step)
+            if not success:
+                return False, message
             
-            # 엑셀 존재 여부 체크
-            self.check_excel_exists(step_num, file_path=self.filepath)
-
             # JSON 자재코드와 엑셀 비교
             self.matches = self.compare_with_json(step_num, step)
 
@@ -425,49 +424,61 @@ class HN_ReservationManager:
             
             # 파일 디렉토리 + 파일이름 + .xlsx   
             file_directory = PathHelper.get_abs_path('reports','직납직사급')
-            filename = PyAutoGuiHelper.generate_filename("직납_직사급_Pallet_관리", "xlsx")
-            self.logger.debug(f"Step {step_num}: Generated filename is {filename}.")
             
-            time.sleep(1)   
+            # 최대 시도 횟수 
+            max_save_attempts = 3
+            for attempt in range(max_save_attempts):
+                try:
+                    filename = PyAutoGuiHelper.generate_filename("직납_직사급_Pallet_관리", "xlsx")
+                    self.logger.debug(f"Step {step_num}: Generated filename is {filename}.")
 
-            self.filepath = os.path.join(file_directory, filename)
-            self.logger.info(f"Step {step_num}: File path constructed: {self.filepath}.")
+                    self.filepath = os.path.join(file_directory, filename)
+                    self.logger.info(f"Step {step_num}: File path constructed: {self.filepath}.")
+                    
+                    # 파일 저장 시도
+                    PyAutoGuiHelper.save_file_with_name(self.filepath)
+                    self.logger.info(f"Step {step_num}: Excel file saved successfully as {self.filepath}.")
+                    
+                    time.sleep(5) # 저장 완료 대기 시간 증가
+                    
+                    # 파일 존재 확인
+                    if os.path.exists(self.filepath):
+                        self.logger.info(f"Step {step_num}: File successfully saved and verified at {self.filepath}")
+                        return True, "save_and_verify_excel completed successfully."
+                        
+                    self.logger.warning(f"Step {step_num}: Save attempt {attempt + 1} failed, file not found")
+                    
+                except Exception as save_error:
+                    self.logger.error(f"Step {step_num}: Save attempt {attempt + 1} failed with error: {str(save_error)}")
+                    if attempt == max_save_attempts - 1:
+                        error_message = f"Step {step_num}:Save attempt {attempt + 1} failed with error: {str(save_error)}"
+                        self.logger.error(error_message)
+                        return False, error_message
+                    time.sleep(2)
             
-            time.sleep(0.5) 
-            PyAutoGuiHelper.save_file_with_name(self.filepath)
-            self.logger.info(f"Step {step_num}: Excel file saved successfully as {self.filepath}.")
-            
-            time.sleep(1)
-            
-            # 파일 존재 확인, 재시도 로직 추가
-            success, message =  self.check_excel_exists(step_num, file_path=self.filepath, max_attempts=5)
-            self.logger.info(f"Step {step_num}: {message}")
-            if not success:
-                return False, "File not found after saving attempt."
-            
-            return True, "save_and_verify_excel' completed successfully." 
-
-        except Exception as e:
-            error_message = f"Step {step_num}: save_excel_with_index: {str(e)}"
-            self.logger.error(error_message)
-            return False, error_message  # 작업이 실패한 경우 False와 오류 메시지 반환   
-    
-    def check_excel_exists(self, step_num, file_path, max_attempts=5):
-        try:
-            """ 파일이 존재하는지 재시도 하며 확인 """
-            attempts = 0
-            while attempts < max_attempts:
-                if os.path.exists(file_path):
-                    return True, "File found"
-                else:
-                    time.sleep(3)
-                    attempts += 1
-            return False, "File not found after multiple attempts"
+            return False, "Failed to save file after multiple attempts"
 
         except Exception as e:
-            error_message = f"Step {step_num}: check_excel_exists failed: {str(e)}"
+            error_message = f"Step {step_num}: save_excel_with_index failed: {str(e)}"
             self.logger.error(error_message)
             return False, error_message
+    
+    # def check_excel_exists(self, step_num, file_path, max_attempts=5):
+    #     try:
+    #         """ 파일이 존재하는지 재시도 하며 확인 """
+    #         attempts = 0
+    #         while attempts < max_attempts:
+    #             if os.path.exists(file_path):
+    #                 return True, "File found"
+    #             else:
+    #                 time.sleep(3)
+    #                 attempts += 1
+    #         return False, "File not found after multiple attempts"
+
+    #     except Exception as e:
+    #         error_message = f"Step {step_num}: check_excel_exists failed: {str(e)}"
+    #         self.logger.error(error_message)
+    #         return False, error_message
     
     def compare_with_json(self, step_num:int, step: Step):
         try:
@@ -816,25 +827,44 @@ class HN_ReservationManager:
 
             # [파일 디렉토리+파일이름+날짜+시간] 엑셀 저장
             file_directory = PathHelper.get_abs_path('reports','직납직사급납품예약')
-            filename = PyAutoGuiHelper.generate_filename("직납_직사급_납품예약", "xlsx")
-            self.logger.debug(f"Step {step_num}: Generated filename is {filename}.")
             
-            time.sleep(0.5)
-            reserv_filepath = os.path.join(file_directory, filename)
-            self.logger.info(f"Step {step_num}: File path constructed: {reserv_filepath}.")
+            # 최대 시도 횟수
+            max_save_attempts = 3
+            save_success = False  # 파일 저장 성공 여부 추적
             
-            time.sleep(0.5)
-            PyAutoGuiHelper.save_file_with_name(reserv_filepath)
-            self.logger.info(f"Step {step_num}: Excel file saved successfully as {reserv_filepath}.")
+            for attempt in range(max_save_attempts):
+                try:
+                    filename = PyAutoGuiHelper.generate_filename("직납_직사급_납품예약", "xlsx")
+                    self.logger.debug(f"Step {step_num}: Generated filename is {filename}.")
+                    
+                    reserv_filepath = os.path.join(file_directory, filename)
+                    self.logger.info(f"Step {step_num}: File path constructed: {reserv_filepath}.")
+                    
+                    # 파일 저장 시도
+                    PyAutoGuiHelper.save_file_with_name(reserv_filepath)
+                    self.logger.info(f"Step {step_num}: Excel file saved successfully as {reserv_filepath}.")
+                    
+                    time.sleep(5) # 저장 완료 대기 시간 증가
+                    
+                    # 파일 존재 확인
+                    if os.path.exists(reserv_filepath):
+                        self.logger.info(f"Step {step_num}: File successfully saved and verified at {reserv_filepath}")
+                        # 성공 시 파일 경로 저장하고 루프 종료
+                        save_success = True  # 저장 성공 표시
+                        break
+                    
+                    self.logger.warning(f"Step {step_num}: Save attempt {attempt + 1} failed, file not found")
+                
+                except Exception as e:
+                    self.logger.error(f"Step {step_num}: Save attempt {attempt + 1} failed with error: {str(e)}")
+                    if attempt == max_save_attempts - 1:
+                        return False, f"Failed to save file after {max_save_attempts} attempts"
+                    time.sleep(2)
             
-            time.sleep(1)
-            
-            success, message = self.check_excel_exists(step_num, file_path=reserv_filepath, max_attempts=5)
-            self.logger.info(f"Step {step_num}: {message}")
-            
-            if not success:
-                return False, "File not found after saving attempt."
-            
+            # 파일 저장 성공 여부 확인
+            if not save_success:
+                return False, "File not found after saving attempts"
+        
             #! 엑셀파일 읽어서 행 갯수 구하기
             df = pd.read_excel(reserv_filepath, header=0, engine='openpyxl')
             self.logger.debug(f"Step {step_num}: Excel file loaded into DataFrame.")
@@ -908,6 +938,8 @@ class HN_ReservationManager:
                 
                 # 5초 대기
                 time.sleep(3)
+                
+                current_index = index # 현재 처리한 인덱스 업데이트
                 
             self.logger.info(f"Step {step_num}: 'reserve_delivery' completed successfully for all matches.")    
             return True, "'reserve_delivery' completed successfully for all matches."  # 작업이 성공적으로 완료됨
